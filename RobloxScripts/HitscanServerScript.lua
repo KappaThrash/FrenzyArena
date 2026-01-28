@@ -9,6 +9,7 @@ local RANGE = 1100
 local FIRE_RATE = 1
 local DAMAGE = 100
 local MAX_AMMO = 30
+local DEFAULT_AMMO = 30
 local lastShot = {}
 local ammoByPlayer = {}
 
@@ -27,19 +28,35 @@ local function getHandleOAttachment(character)
 	return handleO:FindFirstChildWhichIsA("Attachment", true)
 end
 
+local function getMaxAmmo()
+	local maxAmmo = tool:GetAttribute("MaxAmmo")
+	if maxAmmo == nil then
+		maxAmmo = MAX_AMMO
+	end
+	return maxAmmo
+end
+
+local function getDefaultAmmo()
+	local defaultAmmo = tool:GetAttribute("DefaultAmmo")
+	if defaultAmmo == nil then
+		defaultAmmo = DEFAULT_AMMO
+	end
+	return math.clamp(defaultAmmo, 0, getMaxAmmo())
+end
+
 local function getAmmo(player)
 	local ammo = tool:GetAttribute("Ammo")
 	if ammo == nil then
 		ammo = ammoByPlayer[player]
 	end
 	if ammo == nil then
-		ammo = MAX_AMMO
+		ammo = getDefaultAmmo()
 	end
 	return ammo
 end
 
 local function setAmmo(player, ammo)
-	local clamped = math.clamp(ammo, 0, MAX_AMMO)
+	local clamped = math.clamp(ammo, 0, getMaxAmmo())
 	ammoByPlayer[player] = clamped
 	tool:SetAttribute("Ammo", clamped)
 end
@@ -49,7 +66,7 @@ tool.Equipped:Connect(function()
 	local player = Players:GetPlayerFromCharacter(character)
 	if not player then return end
 	if getAmmo(player) == nil then
-		setAmmo(player, MAX_AMMO)
+		setAmmo(player, getDefaultAmmo())
 	else
 		setAmmo(player, getAmmo(player))
 	end
