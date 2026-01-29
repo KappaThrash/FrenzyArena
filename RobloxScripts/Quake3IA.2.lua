@@ -1,6 +1,6 @@
 --!strict
 -- ============================================================================
--- Q3PlayerController (Unity C#) -> Roblox (IMPROVED, mantendo a lógica original)
+-- Q3PlayerController (Unity C#) -> Roblox (IMPROVED, mantendo a lgica original)
 -- ============================================================================
 
 print(workspace.Gravity)
@@ -64,22 +64,31 @@ local function WaitForChildOfClass(parent: Instance, className: string, timeout:
 
 	local thread = coroutine.running()
 	local conn: RBXScriptConnection? = nil
+	local resumed = false
+
+	local function resumeThread()
+		if resumed then
+			return
+		end
+		resumed = true
+		if conn and conn.Connected then
+			conn:Disconnect()
+		end
+		conn = nil
+		task.spawn(coroutine.resume, thread)
+	end
 
 	conn = parent.ChildAdded:Connect(function(inst: Instance)
 		if inst.ClassName == className then
 			child = inst
-			if conn and conn.Connected then conn:Disconnect() end
-			conn = nil
-			task.spawn(thread)
+			resumeThread()
 		end
 	end)
 
 	if timeout then
 		task.delay(timeout, function()
 			if not child then
-				if conn and conn.Connected then conn:Disconnect() end
-				conn = nil
-				task.spawn(thread)
+				resumeThread()
 			end
 		end)
 	end
@@ -263,6 +272,19 @@ local function AirMove(dt: number)
 	Accelerate(wishDir, wishSpeed, accel, dt)
 	if m_AirControl > 0 then
 		AirControl(wishDir, wishSpeed2, dt)
+	end
+
+	if math.abs(m_MoveInput.X) < 1e-6 and math.abs(m_MoveInput.Z) > 1e-6 then
+		local forwardDir = safeUnit(wishDir)
+		if forwardDir.Magnitude > 0 then
+			local horiz = flatten(m_PlayerVelocity)
+			local forwardSpeed = horiz:Dot(forwardDir)
+			m_PlayerVelocity = Vector3.new(
+				forwardDir.X * forwardSpeed,
+				m_PlayerVelocity.Y,
+				forwardDir.Z * forwardSpeed
+			)
+		end
 	end
 
 	m_PlayerVelocity = m_PlayerVelocity - Vector3.new(0, m_Gravity * dt, 0)
