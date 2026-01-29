@@ -225,6 +225,15 @@ local function AirControl(targetDir: Vector3, targetSpeed: number, dt: number)
 end
 
 local function GetWishDirAndSpeed(settings: MovementSettings): (Vector3, number)
+	local inputMag = math.clamp(
+		math.sqrt(m_MoveInput.X * m_MoveInput.X + m_MoveInput.Z * m_MoveInput.Z),
+		0,
+		1
+	)
+	if inputMag <= 0 then
+		return Vector3.zero, 0
+	end
+
 	local cam = workspace.CurrentCamera
 	local wishDirWorld: Vector3
 
@@ -237,12 +246,6 @@ local function GetWishDirAndSpeed(settings: MovementSettings): (Vector3, number)
 	end
 
 	local wishDir = safeUnit(wishDirWorld)
-
-	local inputMag = math.clamp(
-		math.sqrt(m_MoveInput.X * m_MoveInput.X + m_MoveInput.Z * m_MoveInput.Z),
-		0,
-		1
-	)
 
 	local wishSpeed = inputMag * settings.MaxSpeed
 	return wishDir, wishSpeed
@@ -359,11 +362,17 @@ end
 
 -- Main loop
 RunService.Heartbeat:Connect(function(dt: number)
+	if dt <= 0 then
+		return
+	end
+
 	local hum = Humanoid
 	local root = Root
 	if not hum or not root or hum.Health <= 0 then
 		return
 	end
+
+	local now = os.clock()
 
 	-- === JUMPPAD HOOK COM STAMP ===
 	local stamp = root:GetAttribute("Q3ExternalStamp")
@@ -372,14 +381,14 @@ RunService.Heartbeat:Connect(function(dt: number)
 		local ext = root:GetAttribute("Q3ExternalVelocity")
 		if ext then
 			m_PlayerVelocity = ext
-			m_IgnoreGroundUntil = os.clock() + 0.1
+			m_IgnoreGroundUntil = now + 0.1
 		end
 	end
 
 	QueueJump()
 
 	local isGrounded = hum.FloorMaterial ~= Enum.Material.Air
-	if os.clock() < m_IgnoreGroundUntil then
+	if now < m_IgnoreGroundUntil then
 		isGrounded = false
 	end
 
