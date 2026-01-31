@@ -109,6 +109,7 @@ local Root: BasePart? = nil
 local m_PlayerVelocity = Vector3.zero
 local m_MoveInput = Vector3.zero
 local m_MoveDirectionNorm = Vector3.zero
+local m_LastCamLookDir = Vector3.zero
 
 local m_JumpQueued = false
 local m_IgnoreGroundUntil = 0 -- ADICIONADO
@@ -192,8 +193,8 @@ local function Accelerate(targetDir: Vector3, targetSpeed: number, accel: number
 	)
 end
 
-local function AirControl(targetDir: Vector3, targetSpeed: number, dt: number)
-	if math.abs(m_MoveInput.Z) < 0.001 or math.abs(targetSpeed) < 0.001 then
+local function AirControl(targetDir: Vector3, targetSpeed: number, dt: number, moveInputZ: number)
+	if math.abs(moveInputZ) < 0.001 or math.abs(targetSpeed) < 0.001 then
 		return
 	end
 
@@ -225,6 +226,15 @@ local function AirControl(targetDir: Vector3, targetSpeed: number, dt: number)
 end
 
 local function GetWishDirAndSpeed(settings: MovementSettings): (Vector3, number)
+	local inputMag = math.clamp(
+		math.sqrt(m_MoveInput.X * m_MoveInput.X + m_MoveInput.Z * m_MoveInput.Z),
+		0,
+		1
+	)
+	if inputMag <= 0 then
+		return Vector3.zero, 0
+	end
+
 	local cam = workspace.CurrentCamera
 	local wishDirWorld: Vector3
 
@@ -238,20 +248,51 @@ local function GetWishDirAndSpeed(settings: MovementSettings): (Vector3, number)
 
 	local wishDir = safeUnit(wishDirWorld)
 
-	local inputMag = math.clamp(
-		math.sqrt(m_MoveInput.X * m_MoveInput.X + m_MoveInput.Z * m_MoveInput.Z),
-		0,
-		1
-	)
-
 	local wishSpeed = inputMag * settings.MaxSpeed
 	return wishDir, wishSpeed
 end
 
-local function AirMove(dt: number)
+local function GetWishDirAndSpeedWithInput(settings: MovementSettings, moveInput: Vector3): (Vector3, number)
+	local inputMag = math.clamp(
+		math.sqrt(moveInput.X * moveInput.X + moveInput.Z * moveInput.Z),
+		0,
+		1
+	)
+	if inputMag <= 0 then
+		return Vector3.zero, 0
+	end
+
+	local cam = workspace.CurrentCamera
+	local wishDirWorld: Vector3
+
+	if cam then
+		local fwd = safeUnit(flatten(cam.CFrame.LookVector))
+		local right = safeUnit(flatten(cam.CFrame.RightVector))
+		wishDirWorld = (right * moveInput.X) + (fwd * moveInput.Z)
+	else
+		wishDirWorld = Vector3.new(moveInput.X, 0, moveInput.Z)
+	end
+
+	local wishDir = safeUnit(wishDirWorld)
+	local wishSpeed = inputMag * settings.MaxSpeed
+	return wishDir, wishSpeed
+end
+
+local function AirMove(dt: number, camLookDir: Vector3)
 	local accel: number
 
-	local wishDir, wishSpeed = GetWishDirAndSpeed(m_AirSettings)
+	local moveInput = m_MoveInput
+	if math.abs(moveInput.Z) > 1e-6 and math.abs(moveInput.X) > 1e-6 then
+		local prevLookDir = m_LastCamLookDir
+		if prevLookDir.Magnitude > 0 then
+			local lookDot = camLookDir:Dot(prevLookDir)
+			if lookDot > 0.999 then
+				moveInput = Vector3.new(moveInput.X * 0.2, 0, moveInput.Z)
+			end
+		end
+	end
+
+	local wishDir, wishSpeed = GetWishDirAndSpeedWithInput(m_AirSettings, moveInput)
 	m_MoveDirectionNorm = wishDir
 
 	local wishSpeed2 = wishSpeed
@@ -262,7 +303,7 @@ local function AirMove(dt: number)
 		accel = m_AirSettings.Acceleration
 	end
 
-	if math.abs(m_MoveInput.Z) < 1e-6 and math.abs(m_MoveInput.X) > 1e-6 then
+	if math.abs(moveInput.Z) < 1e-6 and math.abs(moveInput.X) > 1e-6 then
 		if wishSpeed > m_StrafeSettings.MaxSpeed then
 			wishSpeed = m_StrafeSettings.MaxSpeed
 		end
@@ -271,10 +312,10 @@ local function AirMove(dt: number)
 
 	Accelerate(wishDir, wishSpeed, accel, dt)
 	if m_AirControl > 0 then
-		AirControl(wishDir, wishSpeed2, dt)
+		AirControl(wishDir, wishSpeed2, dt, moveInput.Z)
 	end
 
-	if math.abs(m_MoveInput.X) < 1e-6 and math.abs(m_MoveInput.Z) > 1e-6 then
+	if math.abs(moveInput.X) < 1e-6 and math.abs(moveInput.Z) > 1e-6 then
 		local forwardDir = safeUnit(wishDir)
 		if forwardDir.Magnitude > 0 then
 			local horiz = flatten(m_PlayerVelocity)
@@ -301,6 +342,14 @@ local function GroundMove(dt: number, isGrounded: boolean)
 	m_MoveDirectionNorm = wishDir
 
 	Accelerate(wishDir, wishSpeed, m_GroundSettings.Acceleration, dt)
+
+	local horiz = flatten(m_PlayerVelocity)
+	local maxSpeed = m_GroundSettings.MaxSpeed
+	local horizSpeed = horiz.Magnitude
+	if horizSpeed > maxSpeed then
+		local scaled = horiz * (maxSpeed / horizSpeed)
+		m_PlayerVelocity = Vector3.new(scaled.X, m_PlayerVelocity.Y, scaled.Z)
+	end
 
 	m_PlayerVelocity = Vector3.new(m_PlayerVelocity.X, -m_Gravity * dt, m_PlayerVelocity.Z)
 
@@ -335,6 +384,7 @@ local function OnCharacterRemoving()
 	m_PlayerVelocity = Vector3.zero
 	m_MoveInput = Vector3.zero
 	m_MoveDirectionNorm = Vector3.zero
+	m_LastCamLookDir = Vector3.zero
 	m_JumpQueued = false
 end
 
@@ -359,11 +409,17 @@ end
 
 -- Main loop
 RunService.Heartbeat:Connect(function(dt: number)
+	if dt <= 0 then
+		return
+	end
+
 	local hum = Humanoid
 	local root = Root
 	if not hum or not root or hum.Health <= 0 then
 		return
 	end
+
+	local now = os.clock()
 
 	-- === JUMPPAD HOOK COM STAMP ===
 	local stamp = root:GetAttribute("Q3ExternalStamp")
@@ -372,22 +428,27 @@ RunService.Heartbeat:Connect(function(dt: number)
 		local ext = root:GetAttribute("Q3ExternalVelocity")
 		if ext then
 			m_PlayerVelocity = ext
-			m_IgnoreGroundUntil = os.clock() + 0.1
+			m_IgnoreGroundUntil = now + 0.1
 		end
 	end
 
 	QueueJump()
 
+	local cam = workspace.CurrentCamera
+	local camLookDir = if cam then safeUnit(flatten(cam.CFrame.LookVector)) else Vector3.zero
+
 	local isGrounded = hum.FloorMaterial ~= Enum.Material.Air
-	if os.clock() < m_IgnoreGroundUntil then
+	if now < m_IgnoreGroundUntil then
 		isGrounded = false
 	end
 
 	if isGrounded then
 		GroundMove(dt, true)
 	else
-		AirMove(dt)
+		AirMove(dt, camLookDir)
 	end
+
+	m_LastCamLookDir = camLookDir
 
 	root.AssemblyLinearVelocity = m_PlayerVelocity
 	root:SetAttribute("Q3Speed", Vector3.new(
