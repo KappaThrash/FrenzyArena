@@ -7,21 +7,22 @@ local camera = workspace.CurrentCamera
 local tool = script.Parent
 
 --Trocar nome dependendo da arma!!!
-local viewmodelTemplate = ReplicatedStorage:WaitForChild("Viewmodel"):WaitForChild("ViewmodelRailgun")
+local viewmodelFolder = ReplicatedStorage:WaitForChild("Viewmodel")
+local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelRailgun")
 
 
 local viewmodel
 local connection
 
--- posição base da arma
+-- posio base da arma
 local OFFSET = CFrame.new(0.9, -1, -1.5)
 
 -- =========================
 -- BOBBING CONFIG (QUAKE)
 -- =========================
--- Frequência do bobbing
--- Controla QUÃO RÁPIDO a arma balança
--- ? menor = sensação mais pesada / lenta
+-- Frequncia do bobbing
+-- Controla QUO RPIDO a arma balana
+-- ? menor = sensao mais pesada / lenta
 -- ? maior = mais nervoso / arcade
 -- Quake costuma ficar entre 6 ~ 8
 local BOB_FREQ = 7
@@ -29,22 +30,22 @@ local BOB_FREQ = 7
 -- Amplitude vertical do bobbing
 -- Controla o quanto a arma SOBE e DESCE
 -- Valor pequeno evita enjoo
--- Muito alto = sensação de boneco inflável
+-- Muito alto = sensao de boneco inflvel
 -- Bom range: 0.04 ~ 0.08
 local BOB_VERT = 0.07
 
 -- Amplitude lateral do bobbing
 -- Controla o quanto a arma VAI PROS LADOS
--- Dá sensação de peso e passo
+-- D sensao de peso e passo
 -- Geralmente menor que o vertical
 -- Bom range: 0.03 ~ 0.06
 local BOB_SIDE = 0.05
 
--- Suavização do bobbing (anti-tremida)
--- Controla o quão rápido o bobbing acompanha o alvo
--- ? baixo = responde rápido, pode tremer
+-- Suavizao do bobbing (anti-tremida)
+-- Controla o quo rpido o bobbing acompanha o alvo
+-- ? baixo = responde rpido, pode tremer
 -- ? alto = mais suave, mais pesado
--- Range saudável: 8 ~ 14
+-- Range saudvel: 8 ~ 14
 local BOB_SMOOTH = 10
 local bobTime = 0
 local currentBob = Vector3.zero
@@ -58,6 +59,14 @@ local HIDE_NAMES = {
 
 local hiddenParts = {}
 
+local function clearExistingViewmodels()
+	for _, child in ipairs(camera:GetChildren()) do
+		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
+			child:Destroy()
+		end
+	end
+end
+
 local function hidePart(part)
 	if part:IsA("BasePart") then
 		hiddenParts[part] = part.LocalTransparencyModifier
@@ -69,13 +78,13 @@ local function hideDefaultViewmodel()
 	local char = player.Character
 	if not char then return end
 
-	-- 1. Esconde os braços padrão do personagem (Terceira pessoa)
+	-- 1. Esconde os braos padro do personagem (Terceira pessoa)
 	for _, name in ipairs(HIDE_NAMES) do
 		local part = char:FindFirstChild(name)
 		if part then hidePart(part) end
 	end
 
-	-- 2. Esconde TODAS as partes visuais da Tool para você
+	-- 2. Esconde TODAS as partes visuais da Tool para voc
 	-- Isso limpa o Handle, o HandleO e qualquer Cube/Cylinder
 	for _, obj in ipairs(tool:GetDescendants()) do
 		if obj:IsA("BasePart") then
@@ -94,6 +103,7 @@ local function restoreDefaultViewmodel()
 end
 
 local function createViewmodel()
+	clearExistingViewmodels()
 	viewmodel = viewmodelTemplate:Clone()
 	viewmodel.Parent = camera
 

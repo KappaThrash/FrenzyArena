@@ -7,7 +7,8 @@ local camera = workspace.CurrentCamera
 local tool = script.Parent
 
 --Trocar nome dependendo da arma!!!
-local viewmodelTemplate = ReplicatedStorage:WaitForChild("Viewmodel"):WaitForChild("ViewmodelRPG")
+local viewmodelFolder = ReplicatedStorage:WaitForChild("Viewmodel")
+local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelRPG")
 
 
 local viewmodel
@@ -58,6 +59,14 @@ local HIDE_NAMES = {
 
 local hiddenParts = {}
 
+local function clearExistingViewmodels()
+	for _, child in ipairs(camera:GetChildren()) do
+		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
+			child:Destroy()
+		end
+	end
+end
+
 local function hidePart(part)
 	if part:IsA("BasePart") then
 		hiddenParts[part] = part.LocalTransparencyModifier
@@ -94,6 +103,7 @@ local function restoreDefaultViewmodel()
 end
 
 local function createViewmodel()
+	clearExistingViewmodels()
 	viewmodel = viewmodelTemplate:Clone()
 	viewmodel.Parent = camera
 

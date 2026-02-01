@@ -24,7 +24,7 @@ local function createTracer(startPos, endPos)
 end
 
 local function getViewmodelAttachment()
-	local vm = camera:FindFirstChild("ViewmodelRailgun")
+	local vm = camera:FindFirstChild("ViewmodelRPG")
 	if not vm then return nil end
 
 	local primary = vm.PrimaryPart
@@ -37,7 +37,7 @@ local function getViewmodelAttachment()
 end
 
 tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
-	-- Só o próprio jogador usa o viewmodel
+	-- S o prprio jogador usa o viewmodel
 	if shooterUserId == player.UserId then
 		local muzzleAtt = getViewmodelAttachment()
 		if muzzleAtt then
