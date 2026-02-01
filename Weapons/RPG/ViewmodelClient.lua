@@ -7,21 +7,21 @@ local camera = workspace.CurrentCamera
 local tool = script.Parent
 
 --Trocar nome dependendo da arma!!!
-local viewmodelTemplate = ReplicatedStorage:WaitForChild("Viewmodel"):WaitForChild("ViewmodelRailgun")
+local viewmodelTemplate = ReplicatedStorage:WaitForChild("Viewmodel"):WaitForChild("ViewmodelRPG")
 
 
 local viewmodel
 local connection
 
--- posiÁ„o base da arma
+-- posi√ß√£o base da arma
 local OFFSET = CFrame.new(0.9, -1, -1.5)
 
 -- =========================
 -- BOBBING CONFIG (QUAKE)
 -- =========================
--- FrequÍncia do bobbing
--- Controla QU√O R¡PIDO a arma balanÁa
--- ? menor = sensaÁ„o mais pesada / lenta
+-- Frequ√™ncia do bobbing
+-- Controla QU√ÉO R√ÅPIDO a arma balan√ßa
+-- ? menor = sensa√ß√£o mais pesada / lenta
 -- ? maior = mais nervoso / arcade
 -- Quake costuma ficar entre 6 ~ 8
 local BOB_FREQ = 7
@@ -29,22 +29,22 @@ local BOB_FREQ = 7
 -- Amplitude vertical do bobbing
 -- Controla o quanto a arma SOBE e DESCE
 -- Valor pequeno evita enjoo
--- Muito alto = sensaÁ„o de boneco infl·vel
+-- Muito alto = sensa√ß√£o de boneco infl√°vel
 -- Bom range: 0.04 ~ 0.08
 local BOB_VERT = 0.07
 
 -- Amplitude lateral do bobbing
 -- Controla o quanto a arma VAI PROS LADOS
--- D· sensaÁ„o de peso e passo
+-- D√° sensa√ß√£o de peso e passo
 -- Geralmente menor que o vertical
 -- Bom range: 0.03 ~ 0.06
 local BOB_SIDE = 0.05
 
--- SuavizaÁ„o do bobbing (anti-tremida)
--- Controla o qu„o r·pido o bobbing acompanha o alvo
--- ? baixo = responde r·pido, pode tremer
+-- Suaviza√ß√£o do bobbing (anti-tremida)
+-- Controla o qu√£o r√°pido o bobbing acompanha o alvo
+-- ? baixo = responde r√°pido, pode tremer
 -- ? alto = mais suave, mais pesado
--- Range saud·vel: 8 ~ 14
+-- Range saud√°vel: 8 ~ 14
 local BOB_SMOOTH = 10
 local bobTime = 0
 local currentBob = Vector3.zero
@@ -69,13 +69,13 @@ local function hideDefaultViewmodel()
 	local char = player.Character
 	if not char then return end
 
-	-- 1. Esconde os braÁos padr„o do personagem (Terceira pessoa)
+	-- 1. Esconde os bra√ßos padr√£o do personagem (Terceira pessoa)
 	for _, name in ipairs(HIDE_NAMES) do
 		local part = char:FindFirstChild(name)
 		if part then hidePart(part) end
 	end
 
-	-- 2. Esconde TODAS as partes visuais da Tool para vocÍ
+	-- 2. Esconde TODAS as partes visuais da Tool para voc√™
 	-- Isso limpa o Handle, o HandleO e qualquer Cube/Cylinder
 	for _, obj in ipairs(tool:GetDescendants()) do
 		if obj:IsA("BasePart") then
@@ -173,4 +173,5 @@ if player.Character then
 end
 
 player.CharacterAdded:Connect(hookCharacter)
+
 
