@@ -1,27 +1,7 @@
-local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
-local RS = game:GetService("ReplicatedStorage")
 
-local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
-local tracerEvent = RS:WaitForChild("TracerVisual")
-
-local function createTracer(startPos, endPos)
-	local dist = (endPos - startPos).Magnitude
-
-	local tracer = Instance.new("Part")
-	tracer.Anchored = true
-	tracer.CanCollide = false
-	tracer.CastShadow = false
-	tracer.Material = Enum.Material.Neon
-	tracer.Color = Color3.fromRGB(255, 0, 0)
-	tracer.Transparency = 0.6
-	tracer.Size = Vector3.new(0.12, 0.12, dist)
-	tracer.CFrame = CFrame.lookAt((startPos + endPos) / 2, endPos)
-	tracer.Parent = workspace
-
-	Debris:AddItem(tracer, 0.35)
-end
+local tool = script.Parent
 
 local function getViewmodelAttachment()
 	local vm = camera:FindFirstChild("ViewmodelRPG")
@@ -36,16 +16,42 @@ local function getViewmodelAttachment()
 	return vm:FindFirstChildWhichIsA("Attachment", true)
 end
 
-tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
-	-- S o prprio jogador usa o viewmodel
-	if shooterUserId == player.UserId then
-		local muzzleAtt = getViewmodelAttachment()
-		if muzzleAtt then
-			createTracer(muzzleAtt.WorldPosition, hitPos)
-			return
-		end
+local function getToolAttachment()
+	local handleO = tool:FindFirstChild("HandleO", true)
+	if not handleO then return nil end
+
+	local primary = handleO:IsA("Model") and handleO.PrimaryPart
+	if primary then
+		local att = primary:FindFirstChildWhichIsA("Attachment")
+		if att then return att end
 	end
 
-	-- Outros jogadores: usa o startPos do server
-	createTracer(startPos, hitPos)
+	return handleO:FindFirstChildWhichIsA("Attachment", true)
+end
+
+local function createMuzzleFlash(position)
+	local flash = Instance.new("Part")
+	flash.Anchored = true
+	flash.CanCollide = false
+	flash.CastShadow = false
+	flash.Material = Enum.Material.Neon
+	flash.Color = Color3.fromRGB(255, 200, 80)
+	flash.Transparency = 0.2
+	flash.Shape = Enum.PartType.Ball
+	flash.Size = Vector3.new(0.35, 0.35, 0.35)
+	flash.CFrame = CFrame.new(position)
+	flash.Parent = workspace
+
+	Debris:AddItem(flash, 0.08)
+end
+
+tool.Activated:Connect(function()
+	local muzzleAtt = getViewmodelAttachment()
+	if not muzzleAtt then
+		muzzleAtt = getToolAttachment()
+	end
+
+	if muzzleAtt then
+		createMuzzleFlash(muzzleAtt.WorldPosition)
+	end
 end)
