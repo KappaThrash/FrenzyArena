@@ -8,7 +8,9 @@ local tool = script.Parent
 
 --Trocar nome dependendo da arma!!!
 local viewmodelFolder = ReplicatedStorage:WaitForChild("Viewmodel")
-local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelRPG")
+local viewmodelPresets = viewmodelFolder:FindFirstChild("Presets")
+local viewmodelTemplate = viewmodelPresets and viewmodelPresets:WaitForChild("ViewmodelRPG")
+	or viewmodelFolder:WaitForChild("ViewmodelRPG")
 
 
 local viewmodel
@@ -62,7 +64,7 @@ local hiddenParts = {}
 
 local function clearExistingViewmodels()
 	for _, child in ipairs(camera:GetChildren()) do
-		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
+		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name, true) then
 			child:Destroy()
 		end
 	end
@@ -198,4 +200,3 @@ if player.Character then
 end
 
 player.CharacterAdded:Connect(hookCharacter)
-

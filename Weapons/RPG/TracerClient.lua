@@ -19,7 +19,7 @@ local function getViewmodelAttachment()
 
 	local vm
 	for _, child in ipairs(camera:GetChildren()) do
-		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
+		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name, true) then
 			vm = child
 			break
 		end
