@@ -4,6 +4,7 @@ local RS = game:GetService("ReplicatedStorage")
 local camera = workspace.CurrentCamera
 local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
+local VIEWMODEL_NAME = "ViewmodelRPG"
 
 local function getViewmodelAttachment()
 	local viewmodelRef = tool:FindFirstChild("ViewmodelRef")
@@ -15,6 +16,16 @@ local function getViewmodelAttachment()
 			if att then return att end
 		end
 		return vm:FindFirstChildWhichIsA("Attachment", true)
+	end
+
+	local vmByName = camera:FindFirstChild(VIEWMODEL_NAME)
+	if vmByName and vmByName:IsA("Model") then
+		local primary = vmByName.PrimaryPart
+		if primary then
+			local att = primary:FindFirstChildWhichIsA("Attachment", true)
+			if att then return att end
+		end
+		return vmByName:FindFirstChildWhichIsA("Attachment", true)
 	end
 
 	local vm
