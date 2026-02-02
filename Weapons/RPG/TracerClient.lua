@@ -37,7 +37,7 @@ local function getViewmodelAttachment()
 end
 
 tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
-	-- Só o próprio jogador usa o viewmodel
+	-- S? o pr?prio jogador usa o viewmodel
 	if shooterUserId == player.UserId then
 		local muzzleAtt = getViewmodelAttachment()
 		if muzzleAtt then

@@ -8,7 +8,10 @@ local tracerEvent = RS:WaitForChild("TracerVisual")
 local RANGE = 1100
 local FIRE_RATE = 1
 local DAMAGE = 100
+local MAX_AMMO = 30
+local DEFAULT_AMMO = 10
 local lastShot = {}
+local ammoByPlayer = {}
 
 local function getHandleOAttachment(character)
 	local handleO = character:FindFirstChild("HandleO", true)
@@ -25,6 +28,60 @@ local function getHandleOAttachment(character)
 	return handleO:FindFirstChildWhichIsA("Attachment", true)
 end
 
+local function getMaxAmmo()
+	local maxAmmo = tool:GetAttribute("MaxAmmo")
+	if maxAmmo == nil then
+		maxAmmo = MAX_AMMO
+	end
+	return maxAmmo
+end
+
+local function getDefaultAmmo()
+	local defaultAmmo = tool:GetAttribute("DefaultAmmo")
+	if defaultAmmo == nil then
+		defaultAmmo = DEFAULT_AMMO
+	end
+	return math.clamp(defaultAmmo, 0, getMaxAmmo())
+end
+
+local function getAmmo(player)
+	local ammo = tool:GetAttribute("Ammo")
+	if ammo == nil then
+		ammo = ammoByPlayer[player]
+	end
+	if ammo == nil then
+		ammo = getDefaultAmmo()
+	end
+	return ammo
+end
+
+local function setAmmo(player, ammo)
+	local clamped = math.clamp(ammo, 0, getMaxAmmo())
+	ammoByPlayer[player] = clamped
+	tool:SetAttribute("Ammo", clamped)
+end
+
+tool.Equipped:Connect(function()
+	local character = tool.Parent
+	local player = Players:GetPlayerFromCharacter(character)
+	if not player then return end
+	if getAmmo(player) == nil then
+		setAmmo(player, getDefaultAmmo())
+	else
+		setAmmo(player, getAmmo(player))
+	end
+end)
+
+tool.AncestryChanged:Connect(function()
+	if tool.Parent == nil then
+		tool:SetAttribute("Ammo", nil)
+	end
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	ammoByPlayer[player] = nil
+end)
+
 shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	if tool.Parent ~= player.Character then return end
 
@@ -32,7 +89,13 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	if lastShot[player] and (t - lastShot[player]) < FIRE_RATE then
 		return
 	end
+
+	local ammo = getAmmo(player)
+	if ammo <= 0 then
+		return
+	end
 	lastShot[player] = t
+	setAmmo(player, ammo - 1)
 
 	local character = player.Character
 	if not character then return end
