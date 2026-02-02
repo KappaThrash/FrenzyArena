@@ -13,6 +13,7 @@ local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelRPG")
 
 local viewmodel
 local connection
+local viewmodelRef
 
 -- posição base da arma
 local OFFSET = CFrame.new(0.9, -1, -1.5)
@@ -107,6 +108,16 @@ local function createViewmodel()
 	viewmodel = viewmodelTemplate:Clone()
 	viewmodel.Parent = camera
 
+	if not viewmodelRef then
+		viewmodelRef = tool:FindFirstChild("ViewmodelRef")
+		if not viewmodelRef then
+			viewmodelRef = Instance.new("ObjectValue")
+			viewmodelRef.Name = "ViewmodelRef"
+			viewmodelRef.Parent = tool
+		end
+	end
+	viewmodelRef.Value = viewmodel
+
 	for _, obj in ipairs(viewmodel:GetDescendants()) do
 		if obj:IsA("BasePart") then
 			obj.Anchored = true
@@ -126,6 +137,10 @@ local function removeViewmodel()
 	if viewmodel then
 		viewmodel:Destroy()
 		viewmodel = nil
+	end
+
+	if viewmodelRef then
+		viewmodelRef.Value = nil
 	end
 
 	restoreDefaultViewmodel()
@@ -183,5 +198,4 @@ if player.Character then
 end
 
 player.CharacterAdded:Connect(hookCharacter)
-
 

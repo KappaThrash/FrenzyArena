@@ -6,6 +6,17 @@ local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
 
 local function getViewmodelAttachment()
+	local viewmodelRef = tool:FindFirstChild("ViewmodelRef")
+	if viewmodelRef and viewmodelRef.Value then
+		local vm = viewmodelRef.Value
+		local primary = vm.PrimaryPart
+		if primary then
+			local att = primary:FindFirstChildWhichIsA("Attachment", true)
+			if att then return att end
+		end
+		return vm:FindFirstChildWhichIsA("Attachment", true)
+	end
+
 	local vm
 	for _, child in ipairs(camera:GetChildren()) do
 		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
@@ -17,7 +28,7 @@ local function getViewmodelAttachment()
 
 	local primary = vm.PrimaryPart
 	if primary then
-		local att = primary:FindFirstChildWhichIsA("Attachment")
+		local att = primary:FindFirstChildWhichIsA("Attachment", true)
 		if att then return att end
 	end
 
