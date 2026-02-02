@@ -12,9 +12,13 @@ local LIFETIME = 6
 local BLAST_RADIUS = 12
 local DAMAGE = 90
 local lastShot = {}
+local ROCKET_ATTACHMENT_NAME = "RocketAttachment"
 
 local function getHandleOAttachment(character)
-	local handleO = character:FindFirstChild("HandleO", true)
+	local handleO = tool:FindFirstChild("HandleO", true)
+	if not handleO and character then
+		handleO = character:FindFirstChild("HandleO", true)
+	end
 	if not handleO then return nil end
 
 	local primary = handleO:IsA("Model") and handleO.PrimaryPart
@@ -57,6 +61,39 @@ local function setRocketCFrame(rocket, cframe)
 	if rocket:IsA("BasePart") then
 		rocket.CFrame = cframe
 	end
+end
+
+local function ensureRocketAttachment(part)
+	local attachment = part:FindFirstChild(ROCKET_ATTACHMENT_NAME)
+	if attachment and attachment:IsA("Attachment") then
+		return attachment
+	end
+
+	attachment = Instance.new("Attachment")
+	attachment.Name = ROCKET_ATTACHMENT_NAME
+	attachment.Parent = part
+	return attachment
+end
+
+local function applyRocketFlight(rocketPart, direction)
+	local attachment = ensureRocketAttachment(rocketPart)
+
+	local linearVelocity = Instance.new("LinearVelocity")
+	linearVelocity.Attachment0 = attachment
+	linearVelocity.RelativeTo = Enum.ActuatorRelativeTo.World
+	linearVelocity.VectorVelocity = direction.Unit * SPEED
+	linearVelocity.MaxForce = math.huge
+	linearVelocity.Parent = rocketPart
+
+	local align = Instance.new("AlignOrientation")
+	align.Attachment0 = attachment
+	align.Mode = Enum.OrientationAlignmentMode.OneAttachment
+	align.MaxTorque = math.huge
+	align.Responsiveness = 200
+	align.CFrame = CFrame.lookAt(Vector3.zero, direction.Unit)
+	align.Parent = rocketPart
+
+	return linearVelocity, align
 end
 
 local function prepareRocketParts(rocket)
@@ -113,19 +150,27 @@ local function spawnRocket(player, muzzleCFrame, direction)
 		return
 	end
 
-	local launchCFrame = CFrame.lookAt(muzzleCFrame.Position, muzzleCFrame.Position + direction)
+	local directionUnit = direction.Magnitude > 0 and direction.Unit or muzzleCFrame.LookVector
+	local launchCFrame = CFrame.lookAt(muzzleCFrame.Position, muzzleCFrame.Position + directionUnit)
 	setRocketCFrame(rocket, launchCFrame)
 
-	rocketPart.AssemblyLinearVelocity = direction.Unit * SPEED
+	local linearVelocity = applyRocketFlight(rocketPart, directionUnit)
+	rocketPart.AssemblyLinearVelocity = directionUnit * SPEED
+	rocketPart.AssemblyAngularVelocity = Vector3.zero
 	rocketPart:SetNetworkOwner(nil)
 
 	local lastPos = rocketPart.Position
 	local connection
+	local touchedConnection
 
 	local function explode(hitPos)
 		if connection then
 			connection:Disconnect()
 			connection = nil
+		end
+		if touchedConnection then
+			touchedConnection:Disconnect()
+			touchedConnection = nil
 		end
 
 		local ignore = { rocket }
@@ -136,6 +181,22 @@ local function spawnRocket(player, muzzleCFrame, direction)
 		applyBlastDamage(hitPos, player, ignore)
 		rocket:Destroy()
 	end
+
+	touchedConnection = rocketPart.Touched:Connect(function(hit)
+		if not hit or not rocketPart.Parent then
+			return
+		end
+
+		if hit:IsDescendantOf(rocket) then
+			return
+		end
+
+		if player.Character and hit:IsDescendantOf(player.Character) then
+			return
+		end
+
+		explode(rocketPart.Position)
+	end)
 
 	connection = RunService.Heartbeat:Connect(function(dt)
 		if not rocketPart or not rocketPart.Parent then
@@ -148,6 +209,9 @@ local function spawnRocket(player, muzzleCFrame, direction)
 
 		local currentPos = rocketPart.Position
 		local rayDir = currentPos - lastPos
+		if linearVelocity then
+			linearVelocity.VectorVelocity = directionUnit * SPEED
+		end
 		if rayDir.Magnitude > 0 then
 			local params = RaycastParams.new()
 			params.FilterType = Enum.RaycastFilterType.Blacklist

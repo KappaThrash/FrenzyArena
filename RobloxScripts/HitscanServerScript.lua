@@ -14,7 +14,10 @@ local lastShot = {}
 local ammoByPlayer = {}
 
 local function getHandleOAttachment(character)
-	local handleO = character:FindFirstChild("HandleO", true)
+	local handleO = tool:FindFirstChild("HandleO", true)
+	if not handleO and character then
+		handleO = character:FindFirstChild("HandleO", true)
+	end
 	if not handleO then return nil end
 
 	-- Prefer attachment inside HandleO.PrimaryPart if exists

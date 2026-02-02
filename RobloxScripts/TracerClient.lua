@@ -5,6 +5,7 @@ local RS = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local viewmodelFolder = RS:WaitForChild("Viewmodel")
 
 local function createTracer(startPos, endPos)
 	local dist = (endPos - startPos).Magnitude
@@ -24,7 +25,13 @@ local function createTracer(startPos, endPos)
 end
 
 local function getViewmodelAttachment()
-	local vm = camera:FindFirstChild("ViewmodelRailgun")
+	local vm
+	for _, child in ipairs(camera:GetChildren()) do
+		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
+			vm = child
+			break
+		end
+	end
 	if not vm then return nil end
 
 	local primary = vm.PrimaryPart
@@ -37,7 +44,7 @@ local function getViewmodelAttachment()
 end
 
 tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
-	-- Só o próprio jogador usa o viewmodel
+	-- S o prprio jogador usa o viewmodel
 	if shooterUserId == player.UserId then
 		local muzzleAtt = getViewmodelAttachment()
 		if muzzleAtt then

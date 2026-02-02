@@ -1,10 +1,18 @@
 local Debris = game:GetService("Debris")
+local RS = game:GetService("ReplicatedStorage")
 
 local camera = workspace.CurrentCamera
 local tool = script.Parent
+local viewmodelFolder = RS:WaitForChild("Viewmodel")
 
 local function getViewmodelAttachment()
-	local vm = camera:FindFirstChild("ViewmodelRPG")
+	local vm
+	for _, child in ipairs(camera:GetChildren()) do
+		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
+			vm = child
+			break
+		end
+	end
 	if not vm then return nil end
 
 	local primary = vm.PrimaryPart
