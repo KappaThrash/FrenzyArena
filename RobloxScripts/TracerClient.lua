@@ -6,6 +6,7 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tracerEvent = RS:WaitForChild("TracerVisual")
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
+local RPG_TOOL_NAME = "RPG"
 
 local function createTracer(startPos, endPos)
 	local dist = (endPos - startPos).Magnitude
@@ -43,9 +44,31 @@ local function getViewmodelAttachment()
 	return vm:FindFirstChildWhichIsA("Attachment", true)
 end
 
+local function isLocalToolTracerActive()
+	local character = player.Character
+	if not character then
+		return false
+	end
+
+	local tool = character:FindFirstChildOfClass("Tool")
+	if not tool then
+		return false
+	end
+
+	if tool.Name ~= RPG_TOOL_NAME then
+		return false
+	end
+
+	return tool:FindFirstChild("TracerClient") ~= nil
+end
+
 tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 	-- S o prprio jogador usa o viewmodel
 	if shooterUserId == player.UserId then
+		if isLocalToolTracerActive() then
+			return
+		end
+
 		local muzzleAtt = getViewmodelAttachment()
 		if muzzleAtt then
 			createTracer(muzzleAtt.WorldPosition, hitPos)
