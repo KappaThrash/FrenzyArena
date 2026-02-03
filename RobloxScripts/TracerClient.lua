@@ -5,8 +5,10 @@ local RS = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
-local RPG_TOOL_NAME = "RPG"
+local VIEWMODEL_NAME = "ViewmodelRailgun"
+local cachedAttachment
 
 local function createTracer(startPos, endPos)
 	local dist = (endPos - startPos).Magnitude
@@ -25,14 +27,7 @@ local function createTracer(startPos, endPos)
 	Debris:AddItem(tracer, 0.35)
 end
 
-local function getViewmodelAttachment()
-	local vm
-	for _, child in ipairs(camera:GetChildren()) do
-		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
-			vm = child
-			break
-		end
-	end
+local function getAttachmentFromModel(vm)
 	if not vm then return nil end
 
 	local primary = vm.PrimaryPart
@@ -44,38 +39,44 @@ local function getViewmodelAttachment()
 	return vm:FindFirstChildWhichIsA("Attachment", true)
 end
 
-local function isLocalToolTracerActive()
-	local character = player.Character
-	if not character then
-		return false
+local function getViewmodelAttachment()
+	local vm = camera:FindFirstChild(VIEWMODEL_NAME)
+	if not vm then
+		vm = camera:WaitForChild(VIEWMODEL_NAME, 0.2)
 	end
 
-	local tool = character:FindFirstChildOfClass("Tool")
-	if not tool then
-		return false
-	end
-
-	if tool.Name ~= RPG_TOOL_NAME then
-		return false
-	end
-
-	return tool:FindFirstChild("TracerClient") ~= nil
+	return getAttachmentFromModel(vm)
 end
+
+tool.Equipped:Connect(function()
+	cachedAttachment = getViewmodelAttachment()
+end)
+
+tool.Unequipped:Connect(function()
+	cachedAttachment = nil
+end)
 
 tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 	-- S o prprio jogador usa o viewmodel
 	if shooterUserId == player.UserId then
-		if isLocalToolTracerActive() then
+		if tool.Parent ~= player.Character then
 			return
 		end
 
-		local muzzleAtt = getViewmodelAttachment()
+		if not viewmodelFolder:FindFirstChild(VIEWMODEL_NAME) then
+			return
+		end
+
+		local muzzleAtt = cachedAttachment
+		if not (muzzleAtt and muzzleAtt.Parent) then
+			muzzleAtt = getViewmodelAttachment()
+			cachedAttachment = muzzleAtt
+		end
 		if muzzleAtt then
 			createTracer(muzzleAtt.WorldPosition, hitPos)
 			return
 		end
 	end
 
-	-- Outros jogadores: usa o startPos do server
 	createTracer(startPos, hitPos)
 end)
