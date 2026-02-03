@@ -59,6 +59,14 @@ local HIDE_NAMES = {
 
 local hiddenParts = {}
 
+local function disablePartCollision(part)
+	if part:IsA("BasePart") then
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+	end
+end
+
 local function clearExistingViewmodels()
 	for _, child in ipairs(camera:GetChildren()) do
 		if child:IsA("Model") and viewmodelFolder:FindFirstChild(child.Name) then
@@ -69,6 +77,7 @@ end
 
 local function hidePart(part)
 	if part:IsA("BasePart") then
+		disablePartCollision(part)
 		hiddenParts[part] = part.LocalTransparencyModifier
 		part.LocalTransparencyModifier = 1
 	end
@@ -105,12 +114,15 @@ end
 local function createViewmodel()
 	clearExistingViewmodels()
 	viewmodel = viewmodelTemplate:Clone()
+	if not viewmodel.PrimaryPart then
+		viewmodel.PrimaryPart = viewmodel:FindFirstChildWhichIsA("BasePart")
+	end
 	viewmodel.Parent = camera
 
 	for _, obj in ipairs(viewmodel:GetDescendants()) do
 		if obj:IsA("BasePart") then
 			obj.Anchored = true
-			obj.CanCollide = false
+			disablePartCollision(obj)
 			obj.CastShadow = false
 		end
 	end
