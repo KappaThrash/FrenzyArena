@@ -113,6 +113,7 @@ tool.Equipped:Connect(function()
 	local character = tool.Parent
 	local player = Players:GetPlayerFromCharacter(character)
 	if not player then return end
+	tool.Enabled = true
 	if getAmmo(player) == nil then
 		setAmmo(player, getDefaultAmmo())
 	else
@@ -132,6 +133,9 @@ end)
 
 shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	if tool.Parent ~= player.Character then return end
+	if not tool.Enabled then
+		tool.Enabled = true
+	end
 
 	local t = tick()
 	if lastShot[player] and (t - lastShot[player]) < FIRE_RATE then
