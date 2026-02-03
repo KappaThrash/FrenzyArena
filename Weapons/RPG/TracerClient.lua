@@ -6,7 +6,6 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tracerEvent = RS:WaitForChild("TracerVisual")
 local tool = script.Parent
-local viewmodelFolder = RS:WaitForChild("Viewmodel")
 local VIEWMODEL_NAME = "ViewmodelRPG"
 
 local function createTracer(startPos, endPos)
@@ -53,10 +52,6 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 	end
 
 	if tool.Parent ~= player.Character then
-		return
-	end
-
-	if not viewmodelFolder:FindFirstChild(VIEWMODEL_NAME) then
 		return
 	end
 

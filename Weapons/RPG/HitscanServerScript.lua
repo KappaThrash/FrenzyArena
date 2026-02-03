@@ -31,7 +31,24 @@ local function getHandleOAttachment(character)
 end
 
 local function getRocketTemplate()
-	return tool:FindFirstChild("Rocket")
+	local direct = tool:FindFirstChild("Rocket")
+	if direct then
+		return direct
+	end
+
+	local descendant = tool:FindFirstChild("Rocket", true)
+	if not descendant then
+		return nil
+	end
+
+	if descendant:IsA("SpecialMesh") then
+		local parent = descendant.Parent
+		if parent and parent:IsA("BasePart") then
+			return parent
+		end
+	end
+
+	return descendant
 end
 
 local function damageHumanoid(humanoid, amount)
@@ -64,13 +81,29 @@ local function spawnRocket(player, origin, direction)
 		return
 	end
 
-	local rocket = rocketTemplate:Clone()
-	rocket.Name = "RPG_Rocket"
-	rocket.CFrame = CFrame.lookAt(origin, origin + direction)
-	rocket.Parent = workspace
-	rocket.Anchored = false
-	rocket.CanCollide = true
-	rocket:SetNetworkOwner(nil)
+	local rocketModel
+	local rocketPart
+
+	if rocketTemplate:IsA("Model") then
+		rocketModel = rocketTemplate:Clone()
+		rocketModel.Name = "RPG_Rocket"
+		rocketModel.Parent = workspace
+		rocketPart = rocketModel.PrimaryPart
+		if not rocketPart then
+			rocketModel:Destroy()
+			return
+		end
+		rocketModel:PivotTo(CFrame.lookAt(origin, origin + direction))
+	else
+		rocketPart = rocketTemplate:Clone()
+		rocketPart.Name = "RPG_Rocket"
+		rocketPart.CFrame = CFrame.lookAt(origin, origin + direction)
+		rocketPart.Parent = workspace
+	end
+
+	rocketPart.Anchored = false
+	rocketPart.CanCollide = true
+	rocketPart:SetNetworkOwner(nil)
 
 	local connection
 	local exploded = false
@@ -90,25 +123,29 @@ local function spawnRocket(player, origin, direction)
 			damageHumanoid(humanoid, DIRECT_DAMAGE)
 		end
 
-		local ignoreList = { rocket }
+		local ignoreList = { rocketPart }
 		if model then
 			table.insert(ignoreList, model)
 		end
 		applySplashDamage(hitPosition, ignoreList)
 
-		rocket:Destroy()
+		if rocketModel then
+			rocketModel:Destroy()
+		else
+			rocketPart:Destroy()
+		end
 	end
 
-	connection = rocket.Touched:Connect(function(hit)
+	connection = rocketPart.Touched:Connect(function(hit)
 		if hit:IsDescendantOf(player.Character) then
 			return
 		end
-		explode(hit, rocket.Position)
+		explode(hit, rocketPart.Position)
 	end)
 
-	rocket.AssemblyLinearVelocity = direction.Unit * ROCKET_SPEED
+	rocketPart.AssemblyLinearVelocity = direction.Unit * ROCKET_SPEED
 
-	Debris:AddItem(rocket, ROCKET_LIFETIME)
+	Debris:AddItem(rocketModel or rocketPart, ROCKET_LIFETIME)
 end
 
 local function getMaxAmmo()
