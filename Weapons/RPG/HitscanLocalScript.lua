@@ -2,7 +2,10 @@ local tool = script.Parent
 local shootEvent = tool:WaitForChild("Shoot")
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local camera = workspace.CurrentCamera
+local player = Players.LocalPlayer
+local enabledConnection
 
 tool.Activated:Connect(function()
 	shootEvent:FireServer(
@@ -11,17 +14,36 @@ tool.Activated:Connect(function()
 	)
 end)
 
+tool.Equipped:Connect(function()
+	tool.Enabled = true
+	if enabledConnection then
+		enabledConnection:Disconnect()
+	end
+	enabledConnection = RunService.Heartbeat:Connect(function()
+		if tool.Parent == player.Character and not tool.Enabled then
+			tool.Enabled = true
+		end
+	end)
+end)
+
+tool.Unequipped:Connect(function()
+	if enabledConnection then
+		enabledConnection:Disconnect()
+		enabledConnection = nil
+	end
+end)
+
 
 --[[ 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
 
--- FunÁ„o para deletar o Grip intruso
+-- Fun√ß√£o para deletar o Grip intruso
 local function matarGrip(child)
 	if child.Name == "RightGrip" or child.Name == "LeftGrip" then
 		task.wait() -- Pequena espera para garantir que o Roblox o instanciou
 		child:Destroy()
-		print("Grip fantasma destruÌdo!")
+		print("Grip fantasma destru√≠do!")
 	end
 end
 
@@ -29,26 +51,26 @@ tool.Equipped:Connect(function()
 	local rHand = char:WaitForChild("RightHand")
 	local lHand = char:WaitForChild("LeftHand")
 
-	-- Conecta o "vigilante" ‡s m„os
+	-- Conecta o "vigilante" √†s m√£os
 	rHand.ChildAdded:Connect(matarGrip)
 	lHand.ChildAdded:Connect(matarGrip)
 
-	-- Limpeza inicial caso ele j· tenha sido criado
+	-- Limpeza inicial caso ele j√° tenha sido criado
 	for _, c in pairs(rHand:GetChildren()) do matarGrip(c) end
 	for _, c in pairs(lHand:GetChildren()) do matarGrip(c) end
 
-	-- Agora o seu Motor6D ter· o caminho livre
+	-- Agora o seu Motor6D ter√° o caminho livre
 	local motorR = tool:FindFirstChildOfClass("Motor6D") or tool.Handle:FindFirstChildOfClass("Motor6D")
 	if motorR then
 		motorR.Part0 = rHand
-		-- O C1 da sua imagem ser· respeitado agora
+		-- O C1 da sua imagem ser√° respeitado agora
 	end
 end)
 
 
 local player = game.Players.LocalPlayer
 
--- Configura a dist‚ncia da c‚mera para vocÍ enxergar o boneco
+-- Configura a dist√¢ncia da c√¢mera para voc√™ enxergar o boneco
 player.CameraMaxZoomDistance = 15
 player.CameraMinZoomDistance = 10
 --player.CameraMode = Enum.CameraMode.Classic
