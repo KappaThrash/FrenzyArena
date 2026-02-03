@@ -50,12 +50,8 @@ local function isLocalToolTracerActive()
 		return false
 	end
 
-	local tool = character:FindFirstChildOfClass("Tool")
+	local tool = character:FindFirstChild(RPG_TOOL_NAME)
 	if not tool then
-		return false
-	end
-
-	if tool.Name ~= RPG_TOOL_NAME then
 		return false
 	end
 

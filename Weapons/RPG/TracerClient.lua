@@ -8,7 +8,6 @@ local tracerEvent = RS:WaitForChild("TracerVisual")
 local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
 local VIEWMODEL_NAME = "ViewmodelRPG"
-local cachedAttachment
 
 local function createTracer(startPos, endPos)
 	local dist = (endPos - startPos).Magnitude
@@ -42,19 +41,11 @@ end
 local function getViewmodelAttachment()
 	local vm = camera:FindFirstChild(VIEWMODEL_NAME)
 	if not vm then
-		vm = camera:WaitForChild(VIEWMODEL_NAME, 0.2)
+		vm = camera:WaitForChild(VIEWMODEL_NAME, 1)
 	end
 
 	return getAttachmentFromModel(vm)
 end
-
-tool.Equipped:Connect(function()
-	cachedAttachment = getViewmodelAttachment()
-end)
-
-tool.Unequipped:Connect(function()
-	cachedAttachment = nil
-end)
 
 tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 	if shooterUserId ~= player.UserId then
@@ -69,11 +60,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 		return
 	end
 
-	local muzzleAtt = cachedAttachment
-	if not (muzzleAtt and muzzleAtt.Parent) then
-		muzzleAtt = getViewmodelAttachment()
-		cachedAttachment = muzzleAtt
-	end
+	local muzzleAtt = getViewmodelAttachment()
 	if muzzleAtt then
 		createTracer(muzzleAtt.WorldPosition, hitPos)
 	end
