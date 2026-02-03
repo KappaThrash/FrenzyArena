@@ -14,7 +14,7 @@ local SPLASH_RADIUS = 12
 local PROJECTILE_SPEED = 220
 local PROJECTILE_LIFETIME = 6
 local MAX_AMMO = 30
-local DEFAULT_AMMO = 10
+local DEFAULT_AMMO = 30
 local lastShot = {}
 local ammoByPlayer = {}
 
