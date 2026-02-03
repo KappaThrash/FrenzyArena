@@ -1,13 +1,15 @@
 local tool = script.Parent
 local shootEvent = tool:WaitForChild("Shoot")
 
-local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
-local tracerEvent = RS:WaitForChild("TracerVisual")
+local Debris = game:GetService("Debris")
 
-local RANGE = 1100
 local FIRE_RATE = 1
-local DAMAGE = 100
+local DIRECT_DAMAGE = 100
+local SPLASH_DAMAGE = 60
+local SPLASH_RADIUS = 12
+local ROCKET_SPEED = 180
+local ROCKET_LIFETIME = 6
 local MAX_AMMO = 30
 local DEFAULT_AMMO = 10
 local lastShot = {}
@@ -26,6 +28,87 @@ local function getHandleOAttachment(character)
 
 	-- Fallback: any attachment inside HandleO
 	return handleO:FindFirstChildWhichIsA("Attachment", true)
+end
+
+local function getRocketTemplate()
+	return tool:FindFirstChild("Rocket")
+end
+
+local function damageHumanoid(humanoid, amount)
+	if humanoid and humanoid.Health > 0 then
+		humanoid:TakeDamage(amount)
+	end
+end
+
+local function applySplashDamage(position, ignoreList)
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = ignoreList
+
+	local parts = workspace:GetPartBoundsInRadius(position, SPLASH_RADIUS, params)
+	local damaged = {}
+
+	for _, part in ipairs(parts) do
+		local model = part:FindFirstAncestorOfClass("Model")
+		local humanoid = model and model:FindFirstChildOfClass("Humanoid")
+		if humanoid and not damaged[humanoid] then
+			damaged[humanoid] = true
+			damageHumanoid(humanoid, SPLASH_DAMAGE)
+		end
+	end
+end
+
+local function spawnRocket(player, origin, direction)
+	local rocketTemplate = getRocketTemplate()
+	if not rocketTemplate then
+		return
+	end
+
+	local rocket = rocketTemplate:Clone()
+	rocket.Name = "RPG_Rocket"
+	rocket.CFrame = CFrame.lookAt(origin, origin + direction)
+	rocket.Parent = workspace
+	rocket.Anchored = false
+	rocket.CanCollide = true
+	rocket:SetNetworkOwner(nil)
+
+	local connection
+	local exploded = false
+
+	local function explode(hitPart, hitPosition)
+		if exploded then return end
+		exploded = true
+
+		if connection then
+			connection:Disconnect()
+			connection = nil
+		end
+
+		local model = hitPart and hitPart:FindFirstAncestorOfClass("Model")
+		local humanoid = model and model:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			damageHumanoid(humanoid, DIRECT_DAMAGE)
+		end
+
+		local ignoreList = { rocket }
+		if model then
+			table.insert(ignoreList, model)
+		end
+		applySplashDamage(hitPosition, ignoreList)
+
+		rocket:Destroy()
+	end
+
+	connection = rocket.Touched:Connect(function(hit)
+		if hit:IsDescendantOf(player.Character) then
+			return
+		end
+		explode(hit, rocket.Position)
+	end)
+
+	rocket.AssemblyLinearVelocity = direction.Unit * ROCKET_SPEED
+
+	Debris:AddItem(rocket, ROCKET_LIFETIME)
 end
 
 local function getMaxAmmo()
@@ -103,26 +186,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	local muzzleAtt = getHandleOAttachment(character)
 	if not muzzleAtt then return end
 
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Blacklist
-	params.FilterDescendantsInstances = { character }
-
-	local result = workspace:Raycast(camOrigin, camDir * RANGE, params)
-
-	local hitPos
-	if result then
-		hitPos = result.Position
-		local model = result.Instance:FindFirstAncestorOfClass("Model")
-		if model then
-			local humanoid = model:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				humanoid:TakeDamage(DAMAGE)
-			end
-		end
-	else
-		hitPos = camOrigin + camDir * RANGE
-	end
-
 	local startPos = muzzleAtt.WorldPosition
-	tracerEvent:FireAllClients(startPos, hitPos, player.UserId)
+	local direction = camDir.Unit
+	spawnRocket(player, startPos, direction)
 end)

@@ -5,6 +5,10 @@ local RS = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local tool = script.Parent
+local viewmodelFolder = RS:WaitForChild("Viewmodel")
+local VIEWMODEL_NAME = "ViewmodelRPG"
+local cachedAttachment
 
 local function createTracer(startPos, endPos)
 	local dist = (endPos - startPos).Magnitude
@@ -23,8 +27,7 @@ local function createTracer(startPos, endPos)
 	Debris:AddItem(tracer, 0.35)
 end
 
-local function getViewmodelAttachment()
-	local vm = camera:FindFirstChild("ViewmodelRailgun")
+local function getAttachmentFromModel(vm)
 	if not vm then return nil end
 
 	local primary = vm.PrimaryPart
@@ -36,16 +39,42 @@ local function getViewmodelAttachment()
 	return vm:FindFirstChildWhichIsA("Attachment", true)
 end
 
-tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
-	-- S? o pr?prio jogador usa o viewmodel
-	if shooterUserId == player.UserId then
-		local muzzleAtt = getViewmodelAttachment()
-		if muzzleAtt then
-			createTracer(muzzleAtt.WorldPosition, hitPos)
-			return
-		end
+local function getViewmodelAttachment()
+	local vm = camera:FindFirstChild(VIEWMODEL_NAME)
+	if not vm then
+		vm = camera:WaitForChild(VIEWMODEL_NAME, 0.2)
 	end
 
-	-- Outros jogadores: usa o startPos do server
-	createTracer(startPos, hitPos)
+	return getAttachmentFromModel(vm)
+end
+
+tool.Equipped:Connect(function()
+	cachedAttachment = getViewmodelAttachment()
+end)
+
+tool.Unequipped:Connect(function()
+	cachedAttachment = nil
+end)
+
+tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
+	if shooterUserId ~= player.UserId then
+		return
+	end
+
+	if tool.Parent ~= player.Character then
+		return
+	end
+
+	if not viewmodelFolder:FindFirstChild(VIEWMODEL_NAME) then
+		return
+	end
+
+	local muzzleAtt = cachedAttachment
+	if not (muzzleAtt and muzzleAtt.Parent) then
+		muzzleAtt = getViewmodelAttachment()
+		cachedAttachment = muzzleAtt
+	end
+	if muzzleAtt then
+		createTracer(muzzleAtt.WorldPosition, hitPos)
+	end
 end)
