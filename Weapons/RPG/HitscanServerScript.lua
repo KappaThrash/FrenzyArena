@@ -18,6 +18,13 @@ local DEFAULT_AMMO = 10
 local lastShot = {}
 local ammoByPlayer = {}
 
+local function usesAmmo()
+	return tool:GetAttribute("Ammo") ~= nil
+		or tool:GetAttribute("DefaultAmmo") ~= nil
+		or tool:GetAttribute("MaxAmmo") ~= nil
+		or next(ammoByPlayer) ~= nil
+end
+
 local function getHandleOAttachment(character)
 	local handleO = character:FindFirstChild("HandleO", true)
 	if not handleO then return nil end
@@ -107,6 +114,10 @@ local function setAmmo(player, ammo)
 end
 
 tool.Equipped:Connect(function()
+	if not usesAmmo() then
+		return
+	end
+
 	local character = tool.Parent
 	local player = Players:GetPlayerFromCharacter(character)
 	if not player then return end
@@ -118,7 +129,7 @@ tool.Equipped:Connect(function()
 end)
 
 tool.AncestryChanged:Connect(function()
-	if tool.Parent == nil then
+	if tool.Parent == nil and usesAmmo() then
 		tool:SetAttribute("Ammo", nil)
 	end
 end)
@@ -135,12 +146,16 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		return
 	end
 
-	local ammo = getAmmo(player)
-	if ammo <= 0 then
-		return
+	if usesAmmo() then
+		local ammo = getAmmo(player)
+		if ammo <= 0 then
+			return
+		end
+		lastShot[player] = t
+		setAmmo(player, ammo - 1)
+	else
+		lastShot[player] = t
 	end
-	lastShot[player] = t
-	setAmmo(player, ammo - 1)
 
 	local character = player.Character
 	if not character then return end
