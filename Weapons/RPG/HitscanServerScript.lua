@@ -142,8 +142,6 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	if ammo <= 0 then
 		return
 	end
-	lastShot[player] = t
-	setAmmo(player, ammo - 1)
 
 	local character = player.Character
 	if not character then return end
@@ -165,6 +163,9 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		rocket:Destroy()
 		return
 	end
+
+	lastShot[player] = t
+	setAmmo(player, ammo - 1)
 
 	local startFrame = CFrame.lookAt(startPos, startPos + direction)
 	if rocket:IsA("BasePart") then
