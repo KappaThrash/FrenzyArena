@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
@@ -9,22 +10,12 @@ local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
 local VIEWMODEL_NAME = "ViewmodelRPG"
 local cachedAttachment
+local ROCKET_NAME = "Rocket"
+local PROJECTILE_SPEED = 220
+local PROJECTILE_LIFETIME = 6
 
-local function createTracer(startPos, endPos)
-	local dist = (endPos - startPos).Magnitude
-
-	local tracer = Instance.new("Part")
-	tracer.Anchored = true
-	tracer.CanCollide = false
-	tracer.CastShadow = false
-	tracer.Material = Enum.Material.Neon
-	tracer.Color = Color3.fromRGB(255, 0, 0)
-	tracer.Transparency = 0.6
-	tracer.Size = Vector3.new(0.12, 0.12, dist)
-	tracer.CFrame = CFrame.lookAt((startPos + endPos) / 2, endPos)
-	tracer.Parent = workspace
-
-	Debris:AddItem(tracer, 0.35)
+local function getRocketTemplate()
+	return tool:FindFirstChild(ROCKET_NAME)
 end
 
 local function getAttachmentFromModel(vm)
@@ -48,6 +39,69 @@ local function getViewmodelAttachment()
 	return getAttachmentFromModel(vm)
 end
 
+local function hideServerProjectile(projectile)
+	if not projectile then return end
+	if projectile:IsA("BasePart") then
+		projectile.LocalTransparencyModifier = 1
+		return
+	end
+
+	if projectile:IsA("Model") then
+		for _, part in ipairs(projectile:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.LocalTransparencyModifier = 1
+			end
+		end
+	end
+end
+
+local function createProjectile(startPos, direction)
+	local template = getRocketTemplate()
+	if not (template and template:IsA("BasePart")) then
+		return
+	end
+
+	local rocket = template:Clone()
+	rocket.Anchored = true
+	rocket.CanCollide = false
+	rocket.CastShadow = false
+	rocket.CFrame = CFrame.lookAt(startPos, startPos + direction)
+	rocket.Parent = workspace
+
+	local alive = true
+	local speed = PROJECTILE_SPEED
+	local lastPos = startPos
+	local timeAlive = 0
+
+	local connection
+	connection = RunService.RenderStepped:Connect(function(dt)
+		if not rocket.Parent then
+			alive = false
+		end
+		if not alive then
+			if connection then
+				connection:Disconnect()
+			end
+			return
+		end
+
+		timeAlive += dt
+		if timeAlive >= PROJECTILE_LIFETIME then
+			rocket:Destroy()
+			if connection then
+				connection:Disconnect()
+			end
+			return
+		end
+
+		local newPos = lastPos + direction * speed * dt
+		rocket.CFrame = CFrame.lookAt(newPos, newPos + direction)
+		lastPos = newPos
+	end)
+
+	Debris:AddItem(rocket, PROJECTILE_LIFETIME + 0.1)
+end
+
 tool.Equipped:Connect(function()
 	cachedAttachment = getViewmodelAttachment()
 end)
@@ -56,7 +110,7 @@ tool.Unequipped:Connect(function()
 	cachedAttachment = nil
 end)
 
-tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
+tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, serverProjectile)
 	if shooterUserId ~= player.UserId then
 		return
 	end
@@ -69,12 +123,15 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 		return
 	end
 
+	hideServerProjectile(serverProjectile)
+
 	local muzzleAtt = cachedAttachment
 	if not (muzzleAtt and muzzleAtt.Parent) then
 		muzzleAtt = getViewmodelAttachment()
 		cachedAttachment = muzzleAtt
 	end
 	if muzzleAtt then
-		createTracer(muzzleAtt.WorldPosition, hitPos)
+		local dir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
+		createProjectile(muzzleAtt.WorldPosition, dir)
 	end
 end)

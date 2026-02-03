@@ -3,11 +3,16 @@ local shootEvent = tool:WaitForChild("Shoot")
 
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 local tracerEvent = RS:WaitForChild("TracerVisual")
 
-local RANGE = 1100
 local FIRE_RATE = 1
-local DAMAGE = 100
+local DIRECT_DAMAGE = 100
+local SPLASH_DAMAGE = 60
+local SPLASH_RADIUS = 12
+local PROJECTILE_SPEED = 220
+local PROJECTILE_LIFETIME = 6
 local MAX_AMMO = 30
 local DEFAULT_AMMO = 10
 local lastShot = {}
@@ -26,6 +31,10 @@ local function getHandleOAttachment(character)
 
 	-- Fallback: any attachment inside HandleO
 	return handleO:FindFirstChildWhichIsA("Attachment", true)
+end
+
+local function getRocketTemplate()
+	return tool:FindFirstChild("Rocket")
 end
 
 local function getMaxAmmo()
@@ -103,26 +112,88 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	local muzzleAtt = getHandleOAttachment(character)
 	if not muzzleAtt then return end
 
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Blacklist
-	params.FilterDescendantsInstances = { character }
-
-	local result = workspace:Raycast(camOrigin, camDir * RANGE, params)
-
-	local hitPos
-	if result then
-		hitPos = result.Position
-		local model = result.Instance:FindFirstAncestorOfClass("Model")
-		if model then
-			local humanoid = model:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				humanoid:TakeDamage(DAMAGE)
-			end
-		end
-	else
-		hitPos = camOrigin + camDir * RANGE
+	local rocketTemplate = getRocketTemplate()
+	if not (rocketTemplate and rocketTemplate:IsA("BasePart")) then
+		return
 	end
 
 	local startPos = muzzleAtt.WorldPosition
-	tracerEvent:FireAllClients(startPos, hitPos, player.UserId)
+	local direction = camDir.Magnitude > 0 and camDir.Unit or character.HumanoidRootPart.CFrame.LookVector
+
+	local rocket = rocketTemplate:Clone()
+	rocket.Anchored = false
+	rocket.CanCollide = false
+	rocket.CastShadow = false
+	rocket.CFrame = CFrame.lookAt(startPos, startPos + direction)
+	rocket.Parent = workspace
+
+	rocket.AssemblyLinearVelocity = direction * PROJECTILE_SPEED
+	Debris:AddItem(rocket, PROJECTILE_LIFETIME + 0.1)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = { character, rocket }
+
+	local function applyDamageAt(position, directInstance)
+		local model = directInstance and directInstance:FindFirstAncestorOfClass("Model")
+		if model then
+			local humanoid = model:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid:TakeDamage(DIRECT_DAMAGE)
+			end
+		end
+
+		local overlapParams = OverlapParams.new()
+		overlapParams.FilterType = Enum.RaycastFilterType.Blacklist
+		overlapParams.FilterDescendantsInstances = { character, rocket }
+		local parts = workspace:GetPartBoundsInRadius(position, SPLASH_RADIUS, overlapParams)
+
+		local damaged = {}
+		for _, part in ipairs(parts) do
+			local hitModel = part:FindFirstAncestorOfClass("Model")
+			if hitModel and not damaged[hitModel] then
+				local humanoid = hitModel:FindFirstChildOfClass("Humanoid")
+				if humanoid then
+					humanoid:TakeDamage(SPLASH_DAMAGE)
+					damaged[hitModel] = true
+				end
+			end
+		end
+	end
+
+	local lastPos = rocket.Position
+	local spawnTime = tick()
+	local connection
+	connection = RunService.Heartbeat:Connect(function()
+		if not rocket.Parent then
+			if connection then
+				connection:Disconnect()
+			end
+			return
+		end
+
+		local currentPos = rocket.Position
+		local delta = currentPos - lastPos
+		if delta.Magnitude > 0 then
+			local result = workspace:Raycast(lastPos, delta, params)
+			if result then
+				applyDamageAt(result.Position, result.Instance)
+				rocket:Destroy()
+				if connection then
+					connection:Disconnect()
+				end
+				return
+			end
+		end
+		lastPos = currentPos
+
+		if tick() - spawnTime >= PROJECTILE_LIFETIME then
+			rocket:Destroy()
+			if connection then
+				connection:Disconnect()
+			end
+		end
+	end)
+
+	tracerEvent:FireAllClients(startPos, direction, player.UserId, rocket)
 end)
