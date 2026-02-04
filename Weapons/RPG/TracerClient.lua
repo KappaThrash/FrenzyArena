@@ -151,36 +151,36 @@ local function getViewmodelAttachment()
 	return getAttachmentFromModel(vm)
 end
 
-local function hideServerProjectile(projectile)
+local function showServerProjectile(projectile)
 	if not projectile then return end
-	local function hidePart(part)
-		part.LocalTransparencyModifier = 1
+	local function showPart(part)
+		part.LocalTransparencyModifier = 0
 	end
 
-	local function hideNow()
-		local hidden = false
+	local function showNow()
+		local shown = false
 		if projectile:IsA("BasePart") then
-			hidePart(projectile)
-			hidden = true
+			showPart(projectile)
+			shown = true
 		elseif projectile:IsA("Model") then
 			for _, part in ipairs(projectile:GetDescendants()) do
 				if part:IsA("BasePart") then
-					hidePart(part)
-					hidden = true
+					showPart(part)
+					shown = true
 				end
 			end
 		end
-		return hidden
+		return shown
 	end
 
-	if hideNow() then
+	if showNow() then
 		return
 	end
 
 	local connection
 	connection = projectile.DescendantAdded:Connect(function(desc)
 		if desc:IsA("BasePart") then
-			hidePart(desc)
+			showPart(desc)
 		end
 	end)
 	task.delay(1, function()
@@ -273,7 +273,9 @@ tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, s
 		return
 	end
 
-	hideServerProjectile(serverProjectile)
+	if serverProjectile then
+		showServerProjectile(serverProjectile)
+	end
 
 	local muzzleAtt = cachedAttachment
 	if not (muzzleAtt and muzzleAtt.Parent) then
@@ -281,8 +283,6 @@ tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, s
 		cachedAttachment = muzzleAtt
 	end
 	if muzzleAtt then
-		local dir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
 		playShotSoundAt(muzzleAtt.WorldPosition, muzzleAtt)
-		createProjectile(muzzleAtt.WorldPosition, dir)
 	end
 end)

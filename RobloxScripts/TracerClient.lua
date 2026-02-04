@@ -114,7 +114,10 @@ tool.Unequipped:Connect(function()
 	cachedAttachment = nil
 end)
 
-tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
+tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, serverProjectile)
+	if serverProjectile ~= nil then
+		return
+	end
 	-- S o prprio jogador usa o viewmodel
 	if shooterUserId == player.UserId then
 		if tool.Parent ~= player.Character then
