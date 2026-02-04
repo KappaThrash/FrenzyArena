@@ -52,7 +52,7 @@ end
 
 local function prepareRocket(rocket)
 	if rocket:IsA("BasePart") then
-		rocket.Anchored = false
+		rocket.Anchored = true
 		rocket.CanCollide = false
 		rocket.CastShadow = false
 		return rocket
@@ -66,7 +66,7 @@ local function prepareRocket(rocket)
 
 		for _, part in ipairs(rocket:GetDescendants()) do
 			if part:IsA("BasePart") then
-				part.Anchored = false
+				part.Anchored = true
 				part.CanCollide = false
 				part.CastShadow = false
 			end
@@ -74,6 +74,14 @@ local function prepareRocket(rocket)
 		return root
 	end
 	return nil
+end
+
+local function setRocketFrame(rocket, frame)
+	if rocket:IsA("BasePart") then
+		rocket.CFrame = frame
+	else
+		rocket:PivotTo(frame)
+	end
 end
 
 local function enableRocketEffects(rocket)
@@ -203,18 +211,9 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	setAmmo(player, ammo - 1)
 
 	local startFrame = CFrame.lookAt(startPos, startPos + direction)
-	if rocket:IsA("BasePart") then
-		rocket.CFrame = startFrame
-	else
-		rocket:PivotTo(startFrame)
-	end
+	setRocketFrame(rocket, startFrame)
 	enableRocketEffects(rocket)
 	rocket.Parent = workspace
-	pcall(function()
-		root:SetNetworkOwner(nil)
-	end)
-
-	root.AssemblyLinearVelocity = direction * PROJECTILE_SPEED
 	local projectileLifetime = getProjectileLifetime()
 	Debris:AddItem(rocket, projectileLifetime + 0.1)
 
@@ -249,8 +248,9 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		end
 	end
 
-	local lastPos = root.Position
+	local lastPos = startPos
 	local spawnTime = tick()
+	local distanceTraveled = 0
 	local exploded = false
 	local connection
 
@@ -263,7 +263,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		rocket:Destroy()
 	end
 
-	connection = RunService.Heartbeat:Connect(function()
+	connection = RunService.Heartbeat:Connect(function(dt)
 		if not rocket.Parent then
 			explode(lastPos, nil)
 			if connection then
@@ -272,26 +272,29 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 			return
 		end
 
-		local currentPos = root.Position
+		distanceTraveled += PROJECTILE_SPEED * dt
+		local currentPos = startPos + direction * distanceTraveled
 		local delta = currentPos - lastPos
-			if delta.Magnitude > 0 then
-				local result = workspace:Raycast(lastPos, delta, params)
-				if result then
-					explode(result.Position, result.Instance)
-					if connection then
-						connection:Disconnect()
-					end
-					return
-				end
-			end
-			lastPos = currentPos
-
-			if tick() - spawnTime >= projectileLifetime then
-				explode(root.Position, nil)
+		if delta.Magnitude > 0 then
+			local result = workspace:Raycast(lastPos, delta, params)
+			if result then
+				explode(result.Position, result.Instance)
 				if connection then
 					connection:Disconnect()
 				end
+				return
 			end
+		end
+
+		setRocketFrame(rocket, CFrame.lookAt(currentPos, currentPos + direction))
+		lastPos = currentPos
+
+		if tick() - spawnTime >= projectileLifetime then
+			explode(currentPos, nil)
+			if connection then
+				connection:Disconnect()
+			end
+		end
 	end)
 
 	tracerEvent:FireAllClients(startPos, direction, player.UserId, rocket)
