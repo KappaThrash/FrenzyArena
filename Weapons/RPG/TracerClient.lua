@@ -64,6 +64,16 @@ local function prepareRocket(rocket)
 	return nil
 end
 
+local function enableRocketEffects(rocket)
+	for _, desc in ipairs(rocket:GetDescendants()) do
+		if desc:IsA("ParticleEmitter") then
+			desc.Enabled = true
+		elseif desc:IsA("Trail") or desc:IsA("Beam") then
+			desc.Enabled = true
+		end
+	end
+end
+
 local function getShotSoundTemplate()
 	for _, name in ipairs(SOUND_NAMES) do
 		local sound = tool:FindFirstChild(name)
@@ -199,6 +209,7 @@ local function createProjectile(startPos, direction)
 	else
 		rocket:PivotTo(startFrame)
 	end
+	enableRocketEffects(rocket)
 	rocket.Parent = workspace
 
 	local alive = true

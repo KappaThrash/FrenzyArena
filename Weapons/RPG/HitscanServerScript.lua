@@ -76,6 +76,16 @@ local function prepareRocket(rocket)
 	return nil
 end
 
+local function enableRocketEffects(rocket)
+	for _, desc in ipairs(rocket:GetDescendants()) do
+		if desc:IsA("ParticleEmitter") then
+			desc.Enabled = true
+		elseif desc:IsA("Trail") or desc:IsA("Beam") then
+			desc.Enabled = true
+		end
+	end
+end
+
 local function getProjectileLifetime()
 	local lifetime = tool:GetAttribute("ProjectileLifetime")
 	if lifetime == nil then
@@ -185,6 +195,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	else
 		rocket:PivotTo(startFrame)
 	end
+	enableRocketEffects(rocket)
 	rocket.Parent = workspace
 	pcall(function()
 		root:SetNetworkOwner(nil)
