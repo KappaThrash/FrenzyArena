@@ -186,6 +186,9 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		rocket:PivotTo(startFrame)
 	end
 	rocket.Parent = workspace
+	pcall(function()
+		root:SetNetworkOwner(nil)
+	end)
 
 	root.AssemblyLinearVelocity = direction * PROJECTILE_SPEED
 	local projectileLifetime = getProjectileLifetime()
@@ -224,9 +227,21 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local lastPos = root.Position
 	local spawnTime = tick()
+	local exploded = false
 	local connection
+
+	local function explode(position, directInstance)
+		if exploded then
+			return
+		end
+		exploded = true
+		applyDamageAt(position, directInstance)
+		rocket:Destroy()
+	end
+
 	connection = RunService.Heartbeat:Connect(function()
 		if not rocket.Parent then
+			explode(lastPos, nil)
 			if connection then
 				connection:Disconnect()
 			end
@@ -235,26 +250,24 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 		local currentPos = root.Position
 		local delta = currentPos - lastPos
-		if delta.Magnitude > 0 then
-			local result = workspace:Raycast(lastPos, delta, params)
-			if result then
-				applyDamageAt(result.Position, result.Instance)
-				rocket:Destroy()
+			if delta.Magnitude > 0 then
+				local result = workspace:Raycast(lastPos, delta, params)
+				if result then
+					explode(result.Position, result.Instance)
+					if connection then
+						connection:Disconnect()
+					end
+					return
+				end
+			end
+			lastPos = currentPos
+
+			if tick() - spawnTime >= projectileLifetime then
+				explode(root.Position, nil)
 				if connection then
 					connection:Disconnect()
 				end
-				return
 			end
-		end
-		lastPos = currentPos
-
-		if tick() - spawnTime >= projectileLifetime then
-			applyDamageAt(root.Position, nil)
-			rocket:Destroy()
-			if connection then
-				connection:Disconnect()
-			end
-		end
 	end)
 
 	tracerEvent:FireAllClients(startPos, direction, player.UserId, rocket)
