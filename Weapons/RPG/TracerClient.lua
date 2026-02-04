@@ -20,6 +20,14 @@ local function getRocketTemplate()
 	return tool:FindFirstChild(ROCKET_NAME)
 end
 
+local function getProjectileLifetime()
+	local lifetime = tool:GetAttribute("ProjectileLifetime")
+	if lifetime == nil then
+		lifetime = PROJECTILE_LIFETIME
+	end
+	return math.max(lifetime, 0.1)
+end
+
 local function getRocketRoot(rocket)
 	if rocket:IsA("BasePart") then
 		return rocket
@@ -197,6 +205,7 @@ local function createProjectile(startPos, direction)
 	local speed = PROJECTILE_SPEED
 	local lastPos = startPos
 	local timeAlive = 0
+	local projectileLifetime = getProjectileLifetime()
 
 	local connection
 	connection = RunService.RenderStepped:Connect(function(dt)
@@ -211,7 +220,7 @@ local function createProjectile(startPos, direction)
 		end
 
 		timeAlive += dt
-		if timeAlive >= PROJECTILE_LIFETIME then
+		if timeAlive >= projectileLifetime then
 			rocket:Destroy()
 			if connection then
 				connection:Disconnect()
@@ -229,7 +238,7 @@ local function createProjectile(startPos, direction)
 		lastPos = newPos
 	end)
 
-	Debris:AddItem(rocket, PROJECTILE_LIFETIME + 0.1)
+	Debris:AddItem(rocket, projectileLifetime + 0.1)
 end
 
 tool.Equipped:Connect(function()

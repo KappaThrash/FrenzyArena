@@ -76,6 +76,14 @@ local function prepareRocket(rocket)
 	return nil
 end
 
+local function getProjectileLifetime()
+	local lifetime = tool:GetAttribute("ProjectileLifetime")
+	if lifetime == nil then
+		lifetime = PROJECTILE_LIFETIME
+	end
+	return math.max(lifetime, 0.1)
+end
+
 local function getMaxAmmo()
 	local maxAmmo = tool:GetAttribute("MaxAmmo")
 	if maxAmmo == nil then
@@ -180,7 +188,8 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	rocket.Parent = workspace
 
 	root.AssemblyLinearVelocity = direction * PROJECTILE_SPEED
-	Debris:AddItem(rocket, PROJECTILE_LIFETIME + 0.1)
+	local projectileLifetime = getProjectileLifetime()
+	Debris:AddItem(rocket, projectileLifetime + 0.1)
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Blacklist
@@ -239,7 +248,8 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		end
 		lastPos = currentPos
 
-		if tick() - spawnTime >= PROJECTILE_LIFETIME then
+		if tick() - spawnTime >= projectileLifetime then
+			applyDamageAt(root.Position, nil)
 			rocket:Destroy()
 			if connection then
 				connection:Disconnect()
