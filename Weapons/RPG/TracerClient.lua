@@ -20,6 +20,19 @@ local function getRocketTemplate()
 	return tool:FindFirstChild(ROCKET_NAME)
 end
 
+local function getProjectileRoot(projectile)
+	if not projectile then
+		return nil
+	end
+	if projectile:IsA("BasePart") then
+		return projectile
+	end
+	if projectile:IsA("Model") then
+		return projectile.PrimaryPart or projectile:FindFirstChildWhichIsA("BasePart")
+	end
+	return nil
+end
+
 local function getProjectileLifetime()
 	local lifetime = tool:GetAttribute("ProjectileLifetime")
 	if lifetime == nil then
@@ -151,36 +164,36 @@ local function getViewmodelAttachment()
 	return getAttachmentFromModel(vm)
 end
 
-local function showServerProjectile(projectile)
+local function hideServerProjectile(projectile)
 	if not projectile then return end
-	local function showPart(part)
-		part.LocalTransparencyModifier = 0
+	local function hidePart(part)
+		part.LocalTransparencyModifier = 1
 	end
 
-	local function showNow()
-		local shown = false
+	local function hideNow()
+		local hidden = false
 		if projectile:IsA("BasePart") then
-			showPart(projectile)
-			shown = true
+			hidePart(projectile)
+			hidden = true
 		elseif projectile:IsA("Model") then
 			for _, part in ipairs(projectile:GetDescendants()) do
 				if part:IsA("BasePart") then
-					showPart(part)
-					shown = true
+					hidePart(part)
+					hidden = true
 				end
 			end
 		end
-		return shown
+		return hidden
 	end
 
-	if showNow() then
+	if hideNow() then
 		return
 	end
 
 	local connection
 	connection = projectile.DescendantAdded:Connect(function(desc)
 		if desc:IsA("BasePart") then
-			showPart(desc)
+			hidePart(desc)
 		end
 	end)
 	task.delay(1, function()
@@ -190,7 +203,7 @@ local function showServerProjectile(projectile)
 	end)
 end
 
-local function createProjectile(startPos, direction)
+local function createViewmodelProjectile(startPos, direction, serverProjectile)
 	local template = getRocketTemplate()
 	if not template then
 		return
@@ -213,10 +226,9 @@ local function createProjectile(startPos, direction)
 	rocket.Parent = workspace
 
 	local alive = true
-	local speed = PROJECTILE_SPEED
-	local lastPos = startPos
 	local timeAlive = 0
 	local projectileLifetime = getProjectileLifetime()
+	local serverRoot = getProjectileRoot(serverProjectile)
 
 	local connection
 	connection = RunService.RenderStepped:Connect(function(dt)
@@ -239,14 +251,32 @@ local function createProjectile(startPos, direction)
 			return
 		end
 
-		local newPos = lastPos + direction * speed * dt
-		local newFrame = CFrame.lookAt(newPos, newPos + direction)
-		if rocket:IsA("BasePart") then
-			rocket.CFrame = newFrame
+		if serverRoot and serverRoot.Parent then
+			local targetPos = serverRoot.Position
+			local rocketPos = rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
+			local blendedPos = rocketPos:Lerp(targetPos, 0.35)
+			local lookDir = (targetPos - blendedPos)
+			if lookDir.Magnitude == 0 then
+				lookDir = direction
+			else
+				lookDir = lookDir.Unit
+			end
+			local newFrame = CFrame.lookAt(blendedPos, blendedPos + lookDir)
+			if rocket:IsA("BasePart") then
+				rocket.CFrame = newFrame
+			else
+				rocket:PivotTo(newFrame)
+			end
 		else
-			rocket:PivotTo(newFrame)
+			local rocketPos = rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
+			local newPos = rocketPos + direction * PROJECTILE_SPEED * dt
+			local newFrame = CFrame.lookAt(newPos, newPos + direction)
+			if rocket:IsA("BasePart") then
+				rocket.CFrame = newFrame
+			else
+				rocket:PivotTo(newFrame)
+			end
 		end
-		lastPos = newPos
 	end)
 
 	Debris:AddItem(rocket, projectileLifetime + 0.1)
@@ -273,9 +303,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, s
 		return
 	end
 
-	if serverProjectile then
-		showServerProjectile(serverProjectile)
-	end
+	hideServerProjectile(serverProjectile)
 
 	local muzzleAtt = cachedAttachment
 	if not (muzzleAtt and muzzleAtt.Parent) then
@@ -284,5 +312,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, s
 	end
 	if muzzleAtt then
 		playShotSoundAt(muzzleAtt.WorldPosition, muzzleAtt)
+		local dir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
+		createViewmodelProjectile(muzzleAtt.WorldPosition, dir, serverProjectile)
 	end
 end)
