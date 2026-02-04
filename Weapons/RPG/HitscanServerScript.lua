@@ -110,6 +110,14 @@ local function getDefaultAmmo()
 	return math.clamp(defaultAmmo, 0, getMaxAmmo())
 end
 
+local function shouldAutoReload()
+	local autoReload = tool:GetAttribute("AutoReload")
+	if autoReload == nil then
+		return true
+	end
+	return autoReload
+end
+
 local function getAmmo(player)
 	local ammo = tool:GetAttribute("Ammo")
 	if ammo == nil then
@@ -162,7 +170,12 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local ammo = getAmmo(player)
 	if ammo <= 0 then
-		return
+		if shouldAutoReload() then
+			setAmmo(player, getDefaultAmmo())
+			ammo = getAmmo(player)
+		else
+			return
+		end
 	end
 
 	local character = player.Character
