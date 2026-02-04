@@ -15,6 +15,8 @@ local PROJECTILE_SPEED = 220
 local PROJECTILE_LIFETIME = 6
 local SOUND_ATTRIBUTE = "ShotSoundId"
 local SOUND_NAMES = { "ShotSound", "FireSound" }
+local VIEWMODEL_BLEND_SPEED = 14
+local VIEWMODEL_MAX_OFFSET = 25
 
 local function getRocketTemplate()
 	return tool:FindFirstChild(ROCKET_NAME)
@@ -39,6 +41,22 @@ local function getProjectileLifetime()
 		lifetime = PROJECTILE_LIFETIME
 	end
 	return math.max(lifetime, 0.1)
+end
+
+local function getViewmodelBlendSpeed()
+	local speed = tool:GetAttribute("ViewmodelBlendSpeed")
+	if speed == nil then
+		speed = VIEWMODEL_BLEND_SPEED
+	end
+	return math.max(speed, 1)
+end
+
+local function getViewmodelMaxOffset()
+	local offset = tool:GetAttribute("ViewmodelMaxOffset")
+	if offset == nil then
+		offset = VIEWMODEL_MAX_OFFSET
+	end
+	return math.max(offset, 1)
 end
 
 local function getRocketRoot(rocket)
@@ -229,6 +247,8 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 	local timeAlive = 0
 	local projectileLifetime = getProjectileLifetime()
 	local serverRoot = getProjectileRoot(serverProjectile)
+	local blendSpeed = getViewmodelBlendSpeed()
+	local maxOffset = getViewmodelMaxOffset()
 
 	local connection
 	connection = RunService.RenderStepped:Connect(function(dt)
@@ -254,7 +274,14 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 		if serverRoot and serverRoot.Parent then
 			local targetPos = serverRoot.Position
 			local rocketPos = rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
-			local blendedPos = rocketPos:Lerp(targetPos, 0.35)
+			local delta = targetPos - rocketPos
+			local alpha = 1 - math.exp(-blendSpeed * dt)
+			local blendedPos
+			if delta.Magnitude > maxOffset then
+				blendedPos = targetPos
+			else
+				blendedPos = rocketPos + delta * alpha
+			end
 			local lookDir = (targetPos - blendedPos)
 			if lookDir.Magnitude == 0 then
 				lookDir = direction
