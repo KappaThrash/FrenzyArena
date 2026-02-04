@@ -9,6 +9,8 @@ local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
 local VIEWMODEL_NAME = "ViewmodelRailgun"
 local cachedAttachment
+local SOUND_ATTRIBUTE = "ShotSoundId"
+local SOUND_NAMES = { "ShotSound", "FireSound" }
 
 local function createTracer(startPos, endPos)
 	local dist = (endPos - startPos).Magnitude
@@ -25,6 +27,62 @@ local function createTracer(startPos, endPos)
 	tracer.Parent = workspace
 
 	Debris:AddItem(tracer, 0.35)
+end
+
+local function getShotSoundTemplate()
+	for _, name in ipairs(SOUND_NAMES) do
+		local sound = tool:FindFirstChild(name)
+		if not sound then
+			local handle = tool:FindFirstChild("Handle")
+			if handle then
+				sound = handle:FindFirstChild(name)
+			end
+		end
+		if sound and sound:IsA("Sound") then
+			return sound
+		end
+	end
+
+	return nil
+end
+
+local function playSoundOnParent(parent)
+	local template = getShotSoundTemplate()
+	local sound
+	if template then
+		sound = template:Clone()
+	else
+		local soundId = tool:GetAttribute(SOUND_ATTRIBUTE)
+		if not soundId then
+			return
+		end
+		sound = Instance.new("Sound")
+		sound.SoundId = soundId
+	end
+
+	sound.Looped = false
+	sound.PlayOnRemove = false
+	sound.Parent = parent
+	sound:Play()
+	Debris:AddItem(sound, math.max(sound.TimeLength, 0.5) + 0.25)
+end
+
+local function playShotSoundAt(position, attachment)
+	if attachment and attachment.Parent then
+		playSoundOnParent(attachment)
+		return
+	end
+
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.CFrame = CFrame.new(position)
+	holder.Parent = workspace
+
+	playSoundOnParent(holder)
+	Debris:AddItem(holder, 2)
 end
 
 local function getAttachmentFromModel(vm)
@@ -73,10 +131,13 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 			cachedAttachment = muzzleAtt
 		end
 		if muzzleAtt then
+			playShotSoundAt(muzzleAtt.WorldPosition, muzzleAtt)
 			createTracer(muzzleAtt.WorldPosition, hitPos)
 			return
 		end
 	end
+
+	playShotSoundAt(startPos)
 
 	createTracer(startPos, hitPos)
 end)

@@ -13,6 +13,8 @@ local cachedAttachment
 local ROCKET_NAME = "Rocket"
 local PROJECTILE_SPEED = 220
 local PROJECTILE_LIFETIME = 6
+local SOUND_ATTRIBUTE = "ShotSoundId"
+local SOUND_NAMES = { "ShotSound", "FireSound" }
 
 local function getRocketTemplate()
 	return tool:FindFirstChild(ROCKET_NAME)
@@ -54,6 +56,62 @@ local function prepareRocket(rocket)
 	return nil
 end
 
+local function getShotSoundTemplate()
+	for _, name in ipairs(SOUND_NAMES) do
+		local sound = tool:FindFirstChild(name)
+		if not sound then
+			local handle = tool:FindFirstChild("Handle")
+			if handle then
+				sound = handle:FindFirstChild(name)
+			end
+		end
+		if sound and sound:IsA("Sound") then
+			return sound
+		end
+	end
+
+	return nil
+end
+
+local function playSoundOnParent(parent)
+	local template = getShotSoundTemplate()
+	local sound
+	if template then
+		sound = template:Clone()
+	else
+		local soundId = tool:GetAttribute(SOUND_ATTRIBUTE)
+		if not soundId then
+			return
+		end
+		sound = Instance.new("Sound")
+		sound.SoundId = soundId
+	end
+
+	sound.Looped = false
+	sound.PlayOnRemove = false
+	sound.Parent = parent
+	sound:Play()
+	Debris:AddItem(sound, math.max(sound.TimeLength, 0.5) + 0.25)
+end
+
+local function playShotSoundAt(position, attachment)
+	if attachment and attachment.Parent then
+		playSoundOnParent(attachment)
+		return
+	end
+
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.CFrame = CFrame.new(position)
+	holder.Parent = workspace
+
+	playSoundOnParent(holder)
+	Debris:AddItem(holder, 2)
+end
+
 local function getAttachmentFromModel(vm)
 	if not vm then return nil end
 
@@ -77,18 +135,41 @@ end
 
 local function hideServerProjectile(projectile)
 	if not projectile then return end
-	if projectile:IsA("BasePart") then
-		projectile.LocalTransparencyModifier = 1
+	local function hidePart(part)
+		part.LocalTransparencyModifier = 1
+	end
+
+	local function hideNow()
+		local hidden = false
+		if projectile:IsA("BasePart") then
+			hidePart(projectile)
+			hidden = true
+		elseif projectile:IsA("Model") then
+			for _, part in ipairs(projectile:GetDescendants()) do
+				if part:IsA("BasePart") then
+					hidePart(part)
+					hidden = true
+				end
+			end
+		end
+		return hidden
+	end
+
+	if hideNow() then
 		return
 	end
 
-	if projectile:IsA("Model") then
-		for _, part in ipairs(projectile:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.LocalTransparencyModifier = 1
-			end
+	local connection
+	connection = projectile.DescendantAdded:Connect(function(desc)
+		if desc:IsA("BasePart") then
+			hidePart(desc)
 		end
-	end
+	end)
+	task.delay(1, function()
+		if connection then
+			connection:Disconnect()
+		end
+	end)
 end
 
 local function createProjectile(startPos, direction)
@@ -181,6 +262,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, s
 	end
 	if muzzleAtt then
 		local dir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
+		playShotSoundAt(muzzleAtt.WorldPosition, muzzleAtt)
 		createProjectile(muzzleAtt.WorldPosition, dir)
 	end
 end)
