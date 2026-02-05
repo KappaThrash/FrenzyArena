@@ -5,7 +5,11 @@ local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
+local ReplicatedFirst = game:GetService("ReplicatedFirst")
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local fastCastFolder = RS:WaitForChild("FastCast2")
+local FastCast2 = require(fastCastFolder:WaitForChild("FastCast2"))
+local FastCastEnums = require(fastCastFolder:WaitForChild("FastCastEnums"))
 
 local FIRE_RATE = 1
 local DIRECT_DAMAGE = 100
@@ -17,6 +21,18 @@ local MAX_AMMO = 30
 local DEFAULT_AMMO = 30
 local lastShot = {}
 local ammoByPlayer = {}
+local activeCasts = {}
+
+local caster = FastCast2.new()
+caster:Init(
+	4,
+	ReplicatedFirst,
+	"CastVMs",
+	ReplicatedFirst,
+	"CastVMsContainer",
+	"CastVM",
+	true
+)
 
 local function getHandleOAttachment(character)
 	local handleO = tool:FindFirstChild("HandleO", true)
@@ -82,6 +98,16 @@ local function setRocketFrame(rocket, frame)
 	else
 		rocket:PivotTo(frame)
 	end
+end
+
+local function buildBehavior(raycastParams, maxDistance)
+	local behavior = FastCast2.newBehavior()
+	behavior.RaycastParams = raycastParams
+	behavior.MaxDistance = maxDistance
+	behavior.HighFidelityBehavior = FastCastEnums.HighFidelityBehavior.Default
+	behavior.AutoIgnoreContainer = true
+	behavior.UseLengthChanged = true
+	return behavior
 end
 
 local function enableRocketEffects(rocket)
@@ -248,54 +274,61 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		end
 	end
 
-	local lastPos = startPos
-	local spawnTime = tick()
-	local distanceTraveled = 0
-	local exploded = false
-	local connection
-
-	local function explode(position, directInstance)
-		if exploded then
-			return
-		end
-		exploded = true
-		applyDamageAt(position, directInstance)
+	local maxDistance = PROJECTILE_SPEED * projectileLifetime
+	local behavior = buildBehavior(params, maxDistance)
+	local cast = caster:RaycastFire(startPos, direction, PROJECTILE_SPEED, behavior)
+	if cast then
+		activeCasts[cast] = {
+			rocket = rocket,
+			direction = direction,
+			lastPos = startPos,
+			exploded = false,
+			applyDamageAt = applyDamageAt,
+		}
+	else
 		rocket:Destroy()
 	end
 
-	connection = RunService.Heartbeat:Connect(function(dt)
-		if not rocket.Parent then
-			explode(lastPos, nil)
-			if connection then
-				connection:Disconnect()
-			end
-			return
-		end
-
-		distanceTraveled += PROJECTILE_SPEED * dt
-		local currentPos = startPos + direction * distanceTraveled
-		local delta = currentPos - lastPos
-		if delta.Magnitude > 0 then
-			local result = workspace:Raycast(lastPos, delta, params)
-			if result then
-				explode(result.Position, result.Instance)
-				if connection then
-					connection:Disconnect()
-				end
-				return
-			end
-		end
-
-		setRocketFrame(rocket, CFrame.lookAt(currentPos, currentPos + direction))
-		lastPos = currentPos
-
-		if tick() - spawnTime >= projectileLifetime then
-			explode(currentPos, nil)
-			if connection then
-				connection:Disconnect()
-			end
-		end
-	end)
-
 	tracerEvent:FireAllClients(startPos, direction, player.UserId, rocket)
+end)
+
+caster.LengthChanged:Connect(function(cast, lastPoint, rayDir, rayDisplacement)
+	local entry = activeCasts[cast]
+	if not entry then
+		return
+	end
+	local rocket = entry.rocket
+	if not (rocket and rocket.Parent) then
+		return
+	end
+	local newPos = lastPoint + rayDir * rayDisplacement
+	entry.lastPos = newPos
+	setRocketFrame(rocket, CFrame.lookAt(newPos, newPos + entry.direction))
+end)
+
+caster.RayHit:Connect(function(cast, raycastResult)
+	local entry = activeCasts[cast]
+	if not entry or entry.exploded then
+		return
+	end
+	entry.exploded = true
+	entry.applyDamageAt(raycastResult.Position, raycastResult.Instance)
+	if entry.rocket then
+		entry.rocket:Destroy()
+	end
+	activeCasts[cast] = nil
+end)
+
+caster.CastTerminating:Connect(function(cast)
+	local entry = activeCasts[cast]
+	if not entry or entry.exploded then
+		return
+	end
+	entry.exploded = true
+	local finalPos = entry.lastPos
+	entry.applyDamageAt(finalPos, nil)
+	if entry.rocket then
+		entry.rocket:Destroy()
+	end
+	activeCasts[cast] = nil
 end)
