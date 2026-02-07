@@ -131,6 +131,10 @@ local function createProjectile(startPos, direction)
 		return
 	end
 
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	params.FilterDescendantsInstances = { player.Character, rocket, viewmodelFolder }
+
 	local startFrame = CFrame.lookAt(startPos, startPos + direction)
 	if rocket:IsA("BasePart") then
 		rocket.CFrame = startFrame
@@ -166,6 +170,17 @@ local function createProjectile(startPos, direction)
 		end
 
 		local newPos = lastPos + direction * speed * dt
+		local delta = newPos - lastPos
+		if delta.Magnitude > 0 then
+			local result = workspace:Raycast(lastPos, delta, params)
+			if result then
+				rocket:Destroy()
+				if connection then
+					connection:Disconnect()
+				end
+				return
+			end
+		end
 		local newFrame = CFrame.lookAt(newPos, newPos + direction)
 		if rocket:IsA("BasePart") then
 			rocket.CFrame = newFrame
