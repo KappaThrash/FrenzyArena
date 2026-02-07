@@ -49,7 +49,7 @@ local function getHandleOAttachment(character)
 		handleO = character:FindFirstChild("HandleO", true)
 	end
 	if not handleO then
-		dwarn("getHandleOAttachment", "HandleO NÃO encontrado (nem na tool nem no character)")
+		dwarn("getHandleOAttachment", "HandleO Nï¿½O encontrado (nem na tool nem no character)")
 		return nil
 	end
 
@@ -78,9 +78,11 @@ local function getHandleOAttachment(character)
 end
 
 local function getRocketTemplate()
-	local r = tool:FindFirstChild("Rocket")
-	dprint("getRocketTemplate", "Rocket template=", safeName(r))
-	return r
+	local weaponsFolder = RS:FindFirstChild("Weapons")
+	local rpgFolder = weaponsFolder and weaponsFolder:FindFirstChild("RPG")
+	local rocket = rpgFolder and rpgFolder:FindFirstChild("Rocket")
+	dprint("getRocketTemplate", "Rocket template=", safeName(rocket))
+	return rocket
 end
 
 local function getRocketRoot(rocket)
@@ -100,7 +102,7 @@ local function prepareRocket(rocket)
 		rocket.Anchored = true
 		rocket.CanCollide = false
 		rocket.CastShadow = false
-		dprint("prepareRocket", "Rocket é BasePart; configurado OK")
+		dprint("prepareRocket", "Rocket ï¿½ BasePart; configurado OK")
 		return rocket
 	end
 
@@ -126,7 +128,7 @@ local function prepareRocket(rocket)
 		return root
 	end
 
-	dwarn("prepareRocket", "Rocket não é BasePart nem Model")
+	dwarn("prepareRocket", "Rocket nï¿½o ï¿½ BasePart nem Model")
 	return nil
 end
 
@@ -245,7 +247,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	dprint("OnServerEvent", "camOrigin=", camOrigin, "camDir=", camDir, "camDirMag=", (typeof(camDir) == "Vector3" and camDir.Magnitude) or "n/a")
 
 	if tool.Parent ~= player.Character then
-		dwarn("OnServerEvent", "Tool não está no character do player. tool.Parent=", safeName(tool.Parent), "char=", safeName(player.Character))
+		dwarn("OnServerEvent", "Tool nï¿½o estï¿½ no character do player. tool.Parent=", safeName(tool.Parent), "char=", safeName(player.Character))
 		return
 	end
 
@@ -262,7 +264,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local ammo = getAmmo(player)
 	if ammo <= 0 then
-		dwarn("Ammo", "sem munição", "ammo=", ammo, "autoReload=", shouldAutoReload())
+		dwarn("Ammo", "sem muniï¿½ï¿½o", "ammo=", ammo, "autoReload=", shouldAutoReload())
 		if shouldAutoReload() then
 			setAmmo(player, getDefaultAmmo())
 			ammo = getAmmo(player)
@@ -279,7 +281,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then
-		dwarn("Character", "HumanoidRootPart não encontrado")
+		dwarn("Character", "HumanoidRootPart nï¿½o encontrado")
 	end
 
 	local muzzleAtt = getHandleOAttachment(character)
@@ -292,7 +294,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local rocketTemplate = getRocketTemplate()
 	if not rocketTemplate then
-		dwarn("Rocket", "Template 'Rocket' não existe dentro da tool")
+		dwarn("Rocket", "Template 'Rocket' nï¿½o existe em ReplicatedStorage/Weapons/RPG")
 		return
 	end
 
@@ -302,10 +304,10 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		direction = camDir.Unit
 	else
 		if hrp then
-			dwarn("Direction", "camDir inválido/zero; usando LookVector do HRP")
+			dwarn("Direction", "camDir invï¿½lido/zero; usando LookVector do HRP")
 			direction = hrp.CFrame.LookVector
 		else
-			dwarn("Direction", "camDir inválido e sem HRP; usando Vector3.new(0,0,-1)")
+			dwarn("Direction", "camDir invï¿½lido e sem HRP; usando Vector3.new(0,0,-1)")
 			direction = Vector3.new(0,0,-1)
 		end
 	end
@@ -393,7 +395,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local function explode(position, directInstance)
 		if exploded then
-			dwarn("Explode", "já explodiu; ignorando")
+			dwarn("Explode", "jï¿½ explodiu; ignorando")
 			return
 		end
 		exploded = true
