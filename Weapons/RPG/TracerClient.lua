@@ -17,7 +17,9 @@ local SOUND_ATTRIBUTE = "ShotSoundId"
 local SOUND_NAMES = { "ShotSound", "FireSound" }
 
 local function getRocketTemplate()
-	return tool:FindFirstChild(ROCKET_NAME)
+	local weaponsFolder = RS:FindFirstChild("Weapons")
+	local rpgFolder = weaponsFolder and weaponsFolder:FindFirstChild("RPG")
+	return rpgFolder and rpgFolder:FindFirstChild(ROCKET_NAME)
 end
 
 local function getProjectileRoot(projectile)
