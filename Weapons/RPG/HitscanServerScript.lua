@@ -6,6 +6,11 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local cachedRocketTemplate = tool:FindFirstChild("Rocket", true)
+if cachedRocketTemplate then
+	cachedRocketTemplate = cachedRocketTemplate:Clone()
+	cachedRocketTemplate.Parent = nil
+end
 
 local FIRE_RATE = 1
 local DIRECT_DAMAGE = 100
@@ -49,7 +54,7 @@ local function getHandleOAttachment(character)
 		handleO = character:FindFirstChild("HandleO", true)
 	end
 	if not handleO then
-		dwarn("getHandleOAttachment", "HandleO N√O encontrado (nem na tool nem no character)")
+		dwarn("getHandleOAttachment", "HandleO N√ÉO encontrado (nem na tool nem no character)")
 		return nil
 	end
 
@@ -78,7 +83,10 @@ local function getHandleOAttachment(character)
 end
 
 local function getRocketTemplate()
-	local r = tool:FindFirstChild("Rocket")
+	local r = tool:FindFirstChild("Rocket", true)
+	if not r then
+		r = cachedRocketTemplate
+	end
 	dprint("getRocketTemplate", "Rocket template=", safeName(r))
 	return r
 end
@@ -100,7 +108,7 @@ local function prepareRocket(rocket)
 		rocket.Anchored = true
 		rocket.CanCollide = false
 		rocket.CastShadow = false
-		dprint("prepareRocket", "Rocket È BasePart; configurado OK")
+		dprint("prepareRocket", "Rocket √© BasePart; configurado OK")
 		return rocket
 	end
 
@@ -126,7 +134,7 @@ local function prepareRocket(rocket)
 		return root
 	end
 
-	dwarn("prepareRocket", "Rocket n„o È BasePart nem Model")
+	dwarn("prepareRocket", "Rocket n√£o √© BasePart nem Model")
 	return nil
 end
 
@@ -245,7 +253,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	dprint("OnServerEvent", "camOrigin=", camOrigin, "camDir=", camDir, "camDirMag=", (typeof(camDir) == "Vector3" and camDir.Magnitude) or "n/a")
 
 	if tool.Parent ~= player.Character then
-		dwarn("OnServerEvent", "Tool n„o est· no character do player. tool.Parent=", safeName(tool.Parent), "char=", safeName(player.Character))
+		dwarn("OnServerEvent", "Tool n√£o est√° no character do player. tool.Parent=", safeName(tool.Parent), "char=", safeName(player.Character))
 		return
 	end
 
@@ -262,7 +270,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local ammo = getAmmo(player)
 	if ammo <= 0 then
-		dwarn("Ammo", "sem muniÁ„o", "ammo=", ammo, "autoReload=", shouldAutoReload())
+		dwarn("Ammo", "sem muni√ß√£o", "ammo=", ammo, "autoReload=", shouldAutoReload())
 		if shouldAutoReload() then
 			setAmmo(player, getDefaultAmmo())
 			ammo = getAmmo(player)
@@ -279,7 +287,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then
-		dwarn("Character", "HumanoidRootPart n„o encontrado")
+		dwarn("Character", "HumanoidRootPart n√£o encontrado")
 	end
 
 	local muzzleAtt = getHandleOAttachment(character)
@@ -292,7 +300,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local rocketTemplate = getRocketTemplate()
 	if not rocketTemplate then
-		dwarn("Rocket", "Template 'Rocket' n„o existe dentro da tool")
+		dwarn("Rocket", "Template 'Rocket' n√£o existe dentro da tool")
 		return
 	end
 
@@ -302,10 +310,10 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		direction = camDir.Unit
 	else
 		if hrp then
-			dwarn("Direction", "camDir inv·lido/zero; usando LookVector do HRP")
+			dwarn("Direction", "camDir inv√°lido/zero; usando LookVector do HRP")
 			direction = hrp.CFrame.LookVector
 		else
-			dwarn("Direction", "camDir inv·lido e sem HRP; usando Vector3.new(0,0,-1)")
+			dwarn("Direction", "camDir inv√°lido e sem HRP; usando Vector3.new(0,0,-1)")
 			direction = Vector3.new(0,0,-1)
 		end
 	end
@@ -393,7 +401,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	local function explode(position, directInstance)
 		if exploded then
-			dwarn("Explode", "j· explodiu; ignorando")
+			dwarn("Explode", "j√° explodiu; ignorando")
 			return
 		end
 		exploded = true

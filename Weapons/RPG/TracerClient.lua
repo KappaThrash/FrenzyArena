@@ -15,9 +15,18 @@ local PROJECTILE_SPEED = 220
 local PROJECTILE_LIFETIME = 6
 local SOUND_ATTRIBUTE = "ShotSoundId"
 local SOUND_NAMES = { "ShotSound", "FireSound" }
+local cachedRocketTemplate = tool:FindFirstChild(ROCKET_NAME, true)
+if cachedRocketTemplate then
+	cachedRocketTemplate = cachedRocketTemplate:Clone()
+	cachedRocketTemplate.Parent = nil
+end
 
 local function getRocketTemplate()
-	return tool:FindFirstChild(ROCKET_NAME)
+	local template = tool:FindFirstChild(ROCKET_NAME, true)
+	if not template then
+		template = cachedRocketTemplate
+	end
+	return template
 end
 
 local function getProjectileRoot(projectile)
