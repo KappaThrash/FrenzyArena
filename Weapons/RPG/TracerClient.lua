@@ -13,9 +13,34 @@ local cachedAttachment
 local ROCKET_NAME = "Rocket"
 local PROJECTILE_SPEED = 220
 local PROJECTILE_LIFETIME = 6
+local rocketTemplateBackup
+
+local function cacheRocketTemplate()
+	local template = tool:WaitForChild(ROCKET_NAME, 2)
+	if template then
+		if template.Archivable == false then
+			template.Archivable = true
+		end
+		rocketTemplateBackup = template:Clone()
+		rocketTemplateBackup.Parent = nil
+	end
+	return template
+end
 
 local function getRocketTemplate()
-	return tool:FindFirstChild(ROCKET_NAME)
+	local template = tool:FindFirstChild(ROCKET_NAME)
+	if template then
+		return template
+	end
+
+	if rocketTemplateBackup then
+		local restored = rocketTemplateBackup:Clone()
+		restored.Name = ROCKET_NAME
+		restored.Parent = tool
+		return restored
+	end
+
+	return nil
 end
 
 local function getRocketRoot(rocket)
@@ -53,6 +78,8 @@ local function prepareRocket(rocket)
 	end
 	return nil
 end
+
+cacheRocketTemplate()
 
 local function getAttachmentFromModel(vm)
 	if not vm then return nil end

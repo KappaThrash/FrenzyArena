@@ -17,6 +17,20 @@ local MAX_AMMO = 30
 local DEFAULT_AMMO = 30
 local lastShot = {}
 local ammoByPlayer = {}
+local ROCKET_NAME = "Rocket"
+local rocketTemplateBackup
+
+local function cacheRocketTemplate()
+	local template = tool:WaitForChild(ROCKET_NAME, 2)
+	if template then
+		if template.Archivable == false then
+			template.Archivable = true
+		end
+		rocketTemplateBackup = template:Clone()
+		rocketTemplateBackup.Parent = nil
+	end
+	return template
+end
 
 local function getHandleOAttachment(character)
 	local handleO = tool:FindFirstChild("HandleO", true)
@@ -37,7 +51,19 @@ local function getHandleOAttachment(character)
 end
 
 local function getRocketTemplate()
-	return tool:FindFirstChild("Rocket")
+	local template = tool:FindFirstChild(ROCKET_NAME)
+	if template then
+		return template
+	end
+
+	if rocketTemplateBackup then
+		local restored = rocketTemplateBackup:Clone()
+		restored.Name = ROCKET_NAME
+		restored.Parent = tool
+		return restored
+	end
+
+	return nil
 end
 
 local function getRocketRoot(rocket)
@@ -49,6 +75,8 @@ local function getRocketRoot(rocket)
 	end
 	return nil
 end
+
+cacheRocketTemplate()
 
 local function prepareRocket(rocket)
 	if rocket:IsA("BasePart") then
