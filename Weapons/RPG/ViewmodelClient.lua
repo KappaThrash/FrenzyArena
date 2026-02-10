@@ -50,6 +50,17 @@ local BOB_SMOOTH = 10
 local bobTime = 0
 local currentBob = Vector3.zero
 
+-- =========================
+-- RECOIL CONFIG (SHOOT)
+-- =========================
+-- Quanto a arma recua ao atirar (valores > 0 empurram para trs)
+local RECOIL_BACK = 0.25
+
+-- Velocidade de retorno do recoil para o normal
+local RECOIL_RETURN = 18
+
+local recoilOffset = 0
+
 -- partes a esconder
 local HIDE_NAMES = {
 	"RightHand","RightLowerArm","RightUpperArm",
@@ -157,6 +168,7 @@ end
 tool.Equipped:Connect(function()
 	hideDefaultViewmodel()
 	createViewmodel()
+	recoilOffset = 0
 
 	connection = RunService.RenderStepped:Connect(function(dt)
 		if not (viewmodel and viewmodel.PrimaryPart) then return end
@@ -177,10 +189,16 @@ tool.Equipped:Connect(function()
 			math.clamp(dt * BOB_SMOOTH, 0, 1)
 		)
 
+		recoilOffset += (0 - recoilOffset) * math.clamp(dt * RECOIL_RETURN, 0, 1)
+
 		viewmodel:SetPrimaryPartCFrame(
-			camera.CFrame * OFFSET * CFrame.new(currentBob)
+			camera.CFrame * OFFSET * CFrame.new(currentBob) * CFrame.new(0, 0, recoilOffset)
 		)
 	end)
+end)
+
+tool.Activated:Connect(function()
+	recoilOffset = math.clamp(recoilOffset + RECOIL_BACK, 0, RECOIL_BACK * 2)
 end)
 
 tool.Unequipped:Connect(removeViewmodel)
