@@ -235,6 +235,22 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 	local timeAlive = 0
 	local projectileLifetime = getProjectileLifetime()
 	local serverRoot = getProjectileRoot(serverProjectile)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.FilterDescendantsInstances = { rocket, player.Character }
+	local lastServerPos = startPos
+
+	local function getRocketPos()
+		return rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
+	end
+
+	local function setRocketFrame(frame)
+		if rocket:IsA("BasePart") then
+			rocket.CFrame = frame
+		else
+			rocket:PivotTo(frame)
+		end
+	end
 
 	local connection
 	connection = RunService.RenderStepped:Connect(function(dt)
@@ -259,7 +275,8 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 
 		if serverRoot and serverRoot.Parent then
 			local targetPos = serverRoot.Position
-			local rocketPos = rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
+			lastServerPos = targetPos
+			local rocketPos = getRocketPos()
 			local blendedPos = rocketPos:Lerp(targetPos, 0.35)
 			local lookDir = (targetPos - blendedPos)
 			if lookDir.Magnitude == 0 then
@@ -267,21 +284,34 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 			else
 				lookDir = lookDir.Unit
 			end
-			local newFrame = CFrame.lookAt(blendedPos, blendedPos + lookDir)
-			if rocket:IsA("BasePart") then
-				rocket.CFrame = newFrame
-			else
-				rocket:PivotTo(newFrame)
-			end
+			setRocketFrame(CFrame.lookAt(blendedPos, blendedPos + lookDir))
 		else
-			local rocketPos = rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
-			local newPos = rocketPos + direction * PROJECTILE_SPEED * dt
-			local newFrame = CFrame.lookAt(newPos, newPos + direction)
-			if rocket:IsA("BasePart") then
-				rocket.CFrame = newFrame
-			else
-				rocket:PivotTo(newFrame)
+			local rocketPos = getRocketPos()
+			if lastServerPos then
+				local toLast = lastServerPos - rocketPos
+				if toLast.Magnitude <= 0.75 then
+					rocket:Destroy()
+					if connection then
+						connection:Disconnect()
+					end
+					return
+				end
 			end
+
+			local stepDir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
+			local newPos = rocketPos + stepDir * PROJECTILE_SPEED * dt
+			local hit = workspace:Raycast(rocketPos, newPos - rocketPos, rayParams)
+			if hit then
+				newPos = hit.Position
+				setRocketFrame(CFrame.lookAt(newPos, newPos + hit.Normal))
+				rocket:Destroy()
+				if connection then
+					connection:Disconnect()
+				end
+				return
+			end
+
+			setRocketFrame(CFrame.lookAt(newPos, newPos + stepDir))
 		end
 	end)
 
