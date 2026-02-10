@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -107,6 +108,10 @@ local function getShotSoundTemplate()
 end
 
 local function playSoundOnParent(parent)
+	if not parent then
+		return
+	end
+
 	local template = getShotSoundTemplate()
 	local sound
 	if template then
@@ -127,12 +132,7 @@ local function playSoundOnParent(parent)
 	Debris:AddItem(sound, math.max(sound.TimeLength, 0.5) + 0.25)
 end
 
-local function playShotSoundAt(position, attachment)
-	if attachment and attachment.Parent then
-		playSoundOnParent(attachment)
-		return
-	end
-
+local function playShotSoundAt(position)
 	local holder = Instance.new("Part")
 	holder.Anchored = true
 	holder.CanCollide = false
@@ -143,6 +143,10 @@ local function playShotSoundAt(position, attachment)
 
 	playSoundOnParent(holder)
 	Debris:AddItem(holder, 2)
+end
+
+local function playLocalShotSound()
+	playSoundOnParent(SoundService)
 end
 
 local function getAttachmentFromModel(vm)
@@ -231,6 +235,22 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 	local timeAlive = 0
 	local projectileLifetime = getProjectileLifetime()
 	local serverRoot = getProjectileRoot(serverProjectile)
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.FilterDescendantsInstances = { rocket, player.Character }
+	local lastServerPos = startPos
+
+	local function getRocketPos()
+		return rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
+	end
+
+	local function setRocketFrame(frame)
+		if rocket:IsA("BasePart") then
+			rocket.CFrame = frame
+		else
+			rocket:PivotTo(frame)
+		end
+	end
 
 	local connection
 	connection = RunService.RenderStepped:Connect(function(dt)
@@ -255,7 +275,8 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 
 		if serverRoot and serverRoot.Parent then
 			local targetPos = serverRoot.Position
-			local rocketPos = rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
+			lastServerPos = targetPos
+			local rocketPos = getRocketPos()
 			local blendedPos = rocketPos:Lerp(targetPos, 0.35)
 			local lookDir = (targetPos - blendedPos)
 			if lookDir.Magnitude == 0 then
@@ -263,21 +284,34 @@ local function createViewmodelProjectile(startPos, direction, serverProjectile)
 			else
 				lookDir = lookDir.Unit
 			end
-			local newFrame = CFrame.lookAt(blendedPos, blendedPos + lookDir)
-			if rocket:IsA("BasePart") then
-				rocket.CFrame = newFrame
-			else
-				rocket:PivotTo(newFrame)
-			end
+			setRocketFrame(CFrame.lookAt(blendedPos, blendedPos + lookDir))
 		else
-			local rocketPos = rocket:IsA("BasePart") and rocket.Position or rocket:GetPivot().Position
-			local newPos = rocketPos + direction * PROJECTILE_SPEED * dt
-			local newFrame = CFrame.lookAt(newPos, newPos + direction)
-			if rocket:IsA("BasePart") then
-				rocket.CFrame = newFrame
-			else
-				rocket:PivotTo(newFrame)
+			local rocketPos = getRocketPos()
+			if lastServerPos then
+				local toLast = lastServerPos - rocketPos
+				if toLast.Magnitude <= 0.75 then
+					rocket:Destroy()
+					if connection then
+						connection:Disconnect()
+					end
+					return
+				end
 			end
+
+			local stepDir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
+			local newPos = rocketPos + stepDir * PROJECTILE_SPEED * dt
+			local hit = workspace:Raycast(rocketPos, newPos - rocketPos, rayParams)
+			if hit then
+				newPos = hit.Position
+				setRocketFrame(CFrame.lookAt(newPos, newPos + hit.Normal))
+				rocket:Destroy()
+				if connection then
+					connection:Disconnect()
+				end
+				return
+			end
+
+			setRocketFrame(CFrame.lookAt(newPos, newPos + stepDir))
 		end
 	end)
 
@@ -294,6 +328,7 @@ end)
 
 tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, serverProjectile)
 	if shooterUserId ~= player.UserId then
+		playShotSoundAt(startPos)
 		return
 	end
 
@@ -313,7 +348,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, s
 		cachedAttachment = muzzleAtt
 	end
 	if muzzleAtt then
-		playShotSoundAt(muzzleAtt.WorldPosition, muzzleAtt)
+		playLocalShotSound()
 		local dir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
 		createViewmodelProjectile(muzzleAtt.WorldPosition, dir, serverProjectile)
 	end
