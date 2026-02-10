@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
 local RS = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -67,6 +68,22 @@ local function getShotSoundTemplate()
 	return nil
 end
 
+local function buildShotSound()
+	local template = getShotSoundTemplate()
+	if template then
+		return template:Clone()
+	end
+
+	local soundId = tool:GetAttribute(SOUND_ATTRIBUTE)
+	if not soundId then
+		return nil
+	end
+
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	return sound
+end
+
 local function playShotSoundAt(position)
 	local holder = Instance.new("Part")
 	holder.Anchored = true
@@ -76,18 +93,10 @@ local function playShotSoundAt(position)
 	holder.CFrame = CFrame.new(position)
 	holder.Parent = workspace
 
-	local template = getShotSoundTemplate()
-	local sound
-	if template then
-		sound = template:Clone()
-	else
-		local soundId = tool:GetAttribute(SOUND_ATTRIBUTE)
-		if not soundId then
-			Debris:AddItem(holder, 0.1)
-			return
-		end
-		sound = Instance.new("Sound")
-		sound.SoundId = soundId
+	local sound = buildShotSound()
+	if not sound then
+		Debris:AddItem(holder, 0.1)
+		return
 	end
 
 	sound.Looped = false
@@ -97,6 +106,19 @@ local function playShotSoundAt(position)
 
 	Debris:AddItem(sound, math.max(sound.TimeLength, 0.5) + 0.25)
 	Debris:AddItem(holder, 2)
+end
+
+local function playLocalShotSound()
+	local sound = buildShotSound()
+	if not sound then
+		return
+	end
+
+	sound.Looped = false
+	sound.PlayOnRemove = false
+	sound.Parent = SoundService
+	sound:Play()
+	Debris:AddItem(sound, math.max(sound.TimeLength, 0.5) + 0.25)
 end
 
 tool.Equipped:Connect(function()
@@ -124,11 +146,13 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 			cachedAttachment = muzzleAtt
 		end
 		if muzzleAtt then
-			playShotSoundAt(muzzleAtt.WorldPosition)
+			playLocalShotSound()
 			createTracer(muzzleAtt.WorldPosition, hitPos)
 			return
 		end
 	end
+
+	playShotSoundAt(startPos)
 
 	createTracer(startPos, hitPos)
 end)

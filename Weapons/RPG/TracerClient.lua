@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
 local RunService = game:GetService("RunService")
 local RS = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
@@ -107,6 +108,10 @@ local function getShotSoundTemplate()
 end
 
 local function playSoundOnParent(parent)
+	if not parent then
+		return
+	end
+
 	local template = getShotSoundTemplate()
 	local sound
 	if template then
@@ -127,7 +132,7 @@ local function playSoundOnParent(parent)
 	Debris:AddItem(sound, math.max(sound.TimeLength, 0.5) + 0.25)
 end
 
-local function playShotSoundAt(position, attachment)
+local function playShotSoundAt(position)
 	local holder = Instance.new("Part")
 	holder.Anchored = true
 	holder.CanCollide = false
@@ -138,6 +143,10 @@ local function playShotSoundAt(position, attachment)
 
 	playSoundOnParent(holder)
 	Debris:AddItem(holder, 2)
+end
+
+local function playLocalShotSound()
+	playSoundOnParent(SoundService)
 end
 
 local function getAttachmentFromModel(vm)
@@ -289,6 +298,7 @@ end)
 
 tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, serverProjectile)
 	if shooterUserId ~= player.UserId then
+		playShotSoundAt(startPos)
 		return
 	end
 
@@ -308,7 +318,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, s
 		cachedAttachment = muzzleAtt
 	end
 	if muzzleAtt then
-		playShotSoundAt(muzzleAtt.WorldPosition, muzzleAtt)
+		playLocalShotSound()
 		local dir = direction.Magnitude > 0 and direction.Unit or camera.CFrame.LookVector
 		createViewmodelProjectile(muzzleAtt.WorldPosition, dir, serverProjectile)
 	end
