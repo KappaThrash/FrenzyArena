@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tool = script.Parent
+local tracerEvent = ReplicatedStorage:WaitForChild("TracerVisual")
 
 --Trocar nome dependendo da arma!!!
 local viewmodelFolder = ReplicatedStorage:WaitForChild("Viewmodel")
@@ -13,6 +14,7 @@ local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelRailgun")
 
 local viewmodel
 local connection
+local tracerConnection
 
 -- posio base da arma
 local OFFSET = CFrame.new(0.9, -1, -1.5)
@@ -57,7 +59,7 @@ local currentBob = Vector3.zero
 local RECOIL_BACK = 0.25
 
 -- Velocidade de retorno do recoil para o normal
-local RECOIL_RETURN = 18
+local RECOIL_RETURN = 8
 
 local recoilOffset = 0
 
@@ -132,6 +134,11 @@ local function removeViewmodel()
 		connection:Disconnect()
 		connection = nil
 	end
+
+	if tracerConnection then
+		tracerConnection:Disconnect()
+		tracerConnection = nil
+	end
 	
 
 	if viewmodel then
@@ -183,10 +190,13 @@ tool.Equipped:Connect(function()
 			camera.CFrame * OFFSET * CFrame.new(currentBob) * CFrame.new(0, 0, recoilOffset)
 		)
 	end)
-end)
 
-tool.Activated:Connect(function()
-	recoilOffset = math.clamp(recoilOffset + RECOIL_BACK, 0, RECOIL_BACK * 2)
+	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId)
+		if shooterUserId ~= player.UserId then return end
+		if not (viewmodel and viewmodel.PrimaryPart) then return end
+
+		recoilOffset = math.clamp(recoilOffset + RECOIL_BACK, 0, RECOIL_BACK * 2)
+	end)
 end)
 
 tool.Unequipped:Connect(removeViewmodel)
