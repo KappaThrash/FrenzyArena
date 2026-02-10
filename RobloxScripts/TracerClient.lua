@@ -8,6 +8,8 @@ local tracerEvent = RS:WaitForChild("TracerVisual")
 local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
 local VIEWMODEL_NAME = "ViewmodelRailgun"
+local SOUND_ATTRIBUTE = "ShotSoundId"
+local SOUND_NAMES = { "ShotSound", "FireSound" }
 local cachedAttachment
 
 local function createTracer(startPos, endPos)
@@ -48,6 +50,55 @@ local function getViewmodelAttachment()
 	return getAttachmentFromModel(vm)
 end
 
+local function getShotSoundTemplate()
+	for _, name in ipairs(SOUND_NAMES) do
+		local sound = tool:FindFirstChild(name)
+		if not sound then
+			local handle = tool:FindFirstChild("Handle")
+			if handle then
+				sound = handle:FindFirstChild(name)
+			end
+		end
+		if sound and sound:IsA("Sound") then
+			return sound
+		end
+	end
+
+	return nil
+end
+
+local function playShotSoundAt(position)
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.CFrame = CFrame.new(position)
+	holder.Parent = workspace
+
+	local template = getShotSoundTemplate()
+	local sound
+	if template then
+		sound = template:Clone()
+	else
+		local soundId = tool:GetAttribute(SOUND_ATTRIBUTE)
+		if not soundId then
+			Debris:AddItem(holder, 0.1)
+			return
+		end
+		sound = Instance.new("Sound")
+		sound.SoundId = soundId
+	end
+
+	sound.Looped = false
+	sound.PlayOnRemove = false
+	sound.Parent = holder
+	sound:Play()
+
+	Debris:AddItem(sound, math.max(sound.TimeLength, 0.5) + 0.25)
+	Debris:AddItem(holder, 2)
+end
+
 tool.Equipped:Connect(function()
 	cachedAttachment = getViewmodelAttachment()
 end)
@@ -73,6 +124,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId)
 			cachedAttachment = muzzleAtt
 		end
 		if muzzleAtt then
+			playShotSoundAt(muzzleAtt.WorldPosition)
 			createTracer(muzzleAtt.WorldPosition, hitPos)
 			return
 		end
