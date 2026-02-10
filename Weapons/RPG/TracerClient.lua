@@ -128,11 +128,6 @@ local function playSoundOnParent(parent)
 end
 
 local function playShotSoundAt(position, attachment)
-	if attachment and attachment.Parent then
-		playSoundOnParent(attachment)
-		return
-	end
-
 	local holder = Instance.new("Part")
 	holder.Anchored = true
 	holder.CanCollide = false
