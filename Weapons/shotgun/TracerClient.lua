@@ -134,6 +134,7 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, weap
 	if weaponId ~= WEAPON_ID then
 		return
 	end
+tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, pelletIndex)
 	if shooterUserId == player.UserId then
 		if tool.Parent ~= player.Character then
 			return

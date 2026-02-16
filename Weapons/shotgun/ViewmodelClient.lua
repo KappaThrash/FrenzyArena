@@ -153,6 +153,7 @@ tool.Equipped:Connect(function()
 
 	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, weaponId, pelletIndex)
 		if weaponId ~= WEAPON_ID then return end
+	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, pelletIndex)
 		if shooterUserId ~= player.UserId then return end
 		if not (viewmodel and viewmodel.PrimaryPart) then return end
 

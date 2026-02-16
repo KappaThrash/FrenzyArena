@@ -141,5 +141,6 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 		end
 
 		tracerEvent:FireAllClients(startPos, hitPos, player.UserId, WEAPON_ID, pelletIndex)
+		tracerEvent:FireAllClients(startPos, hitPos, player.UserId, pelletIndex)
 	end
 end)
