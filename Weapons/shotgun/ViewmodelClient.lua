@@ -6,6 +6,7 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tool = script.Parent
 local tracerEvent = ReplicatedStorage:WaitForChild("TracerVisual")
+local WEAPON_ID = "shotgun"
 
 local viewmodelFolder = ReplicatedStorage:WaitForChild("Viewmodel")
 local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelShotgun")
@@ -150,6 +151,8 @@ tool.Equipped:Connect(function()
 		)
 	end)
 
+	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, weaponId, pelletIndex)
+		if weaponId ~= WEAPON_ID then return end
 	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, pelletIndex)
 		if shooterUserId ~= player.UserId then return end
 		if not (viewmodel and viewmodel.PrimaryPart) then return end

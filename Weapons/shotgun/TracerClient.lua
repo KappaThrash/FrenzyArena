@@ -9,6 +9,7 @@ local tracerEvent = RS:WaitForChild("TracerVisual")
 local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
 local VIEWMODEL_NAME = "ViewmodelShotgun"
+local WEAPON_ID = "shotgun"
 local SOUND_ATTRIBUTE = "ShotSoundId"
 local SOUND_NAMES = { "ShotSound", "FireSound" }
 local cachedAttachment
@@ -129,6 +130,10 @@ tool.Unequipped:Connect(function()
 	cachedAttachment = nil
 end)
 
+tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, weaponId, pelletIndex)
+	if weaponId ~= WEAPON_ID then
+		return
+	end
 tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, pelletIndex)
 	if shooterUserId == player.UserId then
 		if tool.Parent ~= player.Character then

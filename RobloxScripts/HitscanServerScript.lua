@@ -4,6 +4,7 @@ local shootEvent = tool:WaitForChild("Shoot")
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local WEAPON_ID = "railgun"
 
 local RANGE = 1100
 local FIRE_RATE = 1
@@ -127,5 +128,5 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	end
 
 	local startPos = muzzleAtt.WorldPosition
-	tracerEvent:FireAllClients(startPos, hitPos, player.UserId)
+	tracerEvent:FireAllClients(startPos, hitPos, player.UserId, WEAPON_ID)
 end)

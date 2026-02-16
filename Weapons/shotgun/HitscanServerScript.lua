@@ -4,6 +4,7 @@ local shootEvent = tool:WaitForChild("Shoot")
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local WEAPON_ID = "shotgun"
 
 local RANGE = 450
 local FIRE_RATE = 0.9
@@ -139,6 +140,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 			hitPos = camOrigin + pelletDirection * RANGE
 		end
 
+		tracerEvent:FireAllClients(startPos, hitPos, player.UserId, WEAPON_ID, pelletIndex)
 		tracerEvent:FireAllClients(startPos, hitPos, player.UserId, pelletIndex)
 	end
 end)

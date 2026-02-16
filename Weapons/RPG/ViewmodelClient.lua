@@ -6,6 +6,7 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tool = script.Parent
 local tracerEvent = ReplicatedStorage:WaitForChild("TracerVisual")
+local WEAPON_ID = "rpg"
 
 --Trocar nome dependendo da arma!!!
 local viewmodelFolder = ReplicatedStorage:WaitForChild("Viewmodel")
@@ -203,7 +204,8 @@ tool.Equipped:Connect(function()
 		)
 	end)
 
-	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId)
+	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, weaponId)
+		if weaponId ~= WEAPON_ID then return end
 		if shooterUserId ~= player.UserId then return end
 		if not (viewmodel and viewmodel.PrimaryPart) then return end
 
