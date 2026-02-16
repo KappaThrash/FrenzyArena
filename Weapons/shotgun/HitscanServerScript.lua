@@ -4,13 +4,15 @@ local shootEvent = tool:WaitForChild("Shoot")
 local RS = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local tracerEvent = RS:WaitForChild("TracerVisual")
-local WEAPON_ID = "railgun"
+local WEAPON_ID = "shotgun"
 
-local RANGE = 1100
-local FIRE_RATE = 1
-local DAMAGE = 100
-local MAX_AMMO = 30
-local DEFAULT_AMMO = 30
+local RANGE = 450
+local FIRE_RATE = 0.9
+local DAMAGE = 10
+local PELLETS = 12
+local SPREAD_DEGREES = 4.5
+local MAX_AMMO = 24
+local DEFAULT_AMMO = 24
 local lastShot = {}
 local ammoByPlayer = {}
 
@@ -21,14 +23,12 @@ local function getHandleOAttachment(character)
 	end
 	if not handleO then return nil end
 
-	-- Prefer attachment inside HandleO.PrimaryPart if exists
 	local primary = handleO:IsA("Model") and handleO.PrimaryPart
 	if primary then
 		local att = primary:FindFirstChildWhichIsA("Attachment")
 		if att then return att end
 	end
 
-	-- Fallback: any attachment inside HandleO
 	return handleO:FindFirstChildWhichIsA("Attachment", true)
 end
 
@@ -65,10 +65,19 @@ local function setAmmo(player, ammo)
 	tool:SetAttribute("Ammo", clamped)
 end
 
+local function getSpreadDirection(baseDirection)
+	local spread = math.rad(SPREAD_DEGREES)
+	local yaw = (math.random() * 2 - 1) * spread
+	local pitch = (math.random() * 2 - 1) * spread
+	local spreadCF = CFrame.fromOrientation(pitch, yaw, 0)
+	return (spreadCF * baseDirection).Unit
+end
+
 tool.Equipped:Connect(function()
 	local character = tool.Parent
 	local player = Players:GetPlayerFromCharacter(character)
 	if not player then return end
+
 	if getAmmo(player) == nil then
 		setAmmo(player, getDefaultAmmo())
 	else
@@ -98,6 +107,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	if ammo <= 0 then
 		return
 	end
+
 	lastShot[player] = t
 	setAmmo(player, ammo - 1)
 
@@ -111,22 +121,25 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 	params.FilterType = Enum.RaycastFilterType.Blacklist
 	params.FilterDescendantsInstances = { character }
 
-	local result = workspace:Raycast(camOrigin, camDir * RANGE, params)
-
-	local hitPos
-	if result then
-		hitPos = result.Position
-		local model = result.Instance:FindFirstAncestorOfClass("Model")
-		if model then
-			local humanoid = model:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				humanoid:TakeDamage(DAMAGE)
-			end
-		end
-	else
-		hitPos = camOrigin + camDir * RANGE
-	end
-
 	local startPos = muzzleAtt.WorldPosition
-	tracerEvent:FireAllClients(startPos, hitPos, player.UserId, WEAPON_ID)
+	for pelletIndex = 1, PELLETS do
+		local pelletDirection = getSpreadDirection(camDir)
+		local result = workspace:Raycast(camOrigin, pelletDirection * RANGE, params)
+
+		local hitPos
+		if result then
+			hitPos = result.Position
+			local model = result.Instance:FindFirstAncestorOfClass("Model")
+			if model then
+				local humanoid = model:FindFirstChildOfClass("Humanoid")
+				if humanoid then
+					humanoid:TakeDamage(DAMAGE)
+				end
+			end
+		else
+			hitPos = camOrigin + pelletDirection * RANGE
+		end
+
+		tracerEvent:FireAllClients(startPos, hitPos, player.UserId, WEAPON_ID, pelletIndex)
+	end
 end)

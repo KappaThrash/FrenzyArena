@@ -8,8 +8,8 @@ local camera = workspace.CurrentCamera
 local tracerEvent = RS:WaitForChild("TracerVisual")
 local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
-local VIEWMODEL_NAME = "ViewmodelRailgun"
-local WEAPON_ID = "railgun"
+local VIEWMODEL_NAME = "ViewmodelShotgun"
+local WEAPON_ID = "shotgun"
 local SOUND_ATTRIBUTE = "ShotSoundId"
 local SOUND_NAMES = { "ShotSound", "FireSound" }
 local cachedAttachment
@@ -22,13 +22,13 @@ local function createTracer(startPos, endPos)
 	tracer.CanCollide = false
 	tracer.CastShadow = false
 	tracer.Material = Enum.Material.Neon
-	tracer.Color = Color3.fromRGB(255, 0, 0)
-	tracer.Transparency = 0.6
-	tracer.Size = Vector3.new(0.12, 0.12, dist)
+	tracer.Color = Color3.fromRGB(255, 220, 120)
+	tracer.Transparency = 0.7
+	tracer.Size = Vector3.new(0.08, 0.08, dist)
 	tracer.CFrame = CFrame.lookAt((startPos + endPos) / 2, endPos)
 	tracer.Parent = workspace
 
-	Debris:AddItem(tracer, 0.35)
+	Debris:AddItem(tracer, 0.2)
 end
 
 local function getAttachmentFromModel(vm)
@@ -130,12 +130,10 @@ tool.Unequipped:Connect(function()
 	cachedAttachment = nil
 end)
 
-tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, weaponId)
-	if weaponId ~= nil and weaponId ~= WEAPON_ID then
+tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, weaponId, pelletIndex)
+	if weaponId ~= WEAPON_ID then
 		return
 	end
-
-	-- S o prprio jogador usa o viewmodel
 	if shooterUserId == player.UserId then
 		if tool.Parent ~= player.Character then
 			return
@@ -151,13 +149,16 @@ tracerEvent.OnClientEvent:Connect(function(startPos, hitPos, shooterUserId, weap
 			cachedAttachment = muzzleAtt
 		end
 		if muzzleAtt then
-			playLocalShotSound()
+			if pelletIndex == 1 then
+				playLocalShotSound()
+			end
 			createTracer(muzzleAtt.WorldPosition, hitPos)
 			return
 		end
 	end
 
-	playShotSoundAt(startPos)
-
+	if pelletIndex == 1 then
+		playShotSoundAt(startPos)
+	end
 	createTracer(startPos, hitPos)
 end)

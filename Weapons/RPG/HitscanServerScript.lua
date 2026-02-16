@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local tracerEvent = RS:WaitForChild("TracerVisual")
+local WEAPON_ID = "rpg"
 
 local FIRE_RATE = 1
 local DIRECT_DAMAGE = 100
@@ -447,7 +448,7 @@ shootEvent.OnServerEvent:Connect(function(player, camOrigin, camDir)
 
 	-- tracer visual
 	local ok, err = pcall(function()
-		tracerEvent:FireAllClients(startPos, direction, player.UserId, rocket)
+		tracerEvent:FireAllClients(startPos, direction, player.UserId, WEAPON_ID, rocket)
 	end)
 	if ok then
 		dprint("Tracer", "FireAllClients OK", "startPos=", startPos, "userId=", player.UserId, "rocket=", safeName(rocket))

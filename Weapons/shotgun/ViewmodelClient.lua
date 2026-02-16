@@ -6,69 +6,33 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 local tool = script.Parent
 local tracerEvent = ReplicatedStorage:WaitForChild("TracerVisual")
-local WEAPON_ID = "railgun"
+local WEAPON_ID = "shotgun"
 
---Trocar nome dependendo da arma!!!
 local viewmodelFolder = ReplicatedStorage:WaitForChild("Viewmodel")
-local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelRailgun")
-
+local viewmodelTemplate = viewmodelFolder:WaitForChild("ViewmodelShotgun")
 
 local viewmodel
 local connection
 local tracerConnection
 
--- posio base da arma
-local OFFSET = CFrame.new(0.9, -1, -1.5)
+local OFFSET = CFrame.new(0.9, -1, -1.4)
 
--- =========================
--- BOBBING CONFIG (QUAKE)
--- =========================
--- Frequncia do bobbing
--- Controla QUO RPIDO a arma balana
--- ? menor = sensao mais pesada / lenta
--- ? maior = mais nervoso / arcade
--- Quake costuma ficar entre 6 ~ 8
 local BOB_FREQ = 7
-
--- Amplitude vertical do bobbing
--- Controla o quanto a arma SOBE e DESCE
--- Valor pequeno evita enjoo
--- Muito alto = sensao de boneco inflvel
--- Bom range: 0.04 ~ 0.08
 local BOB_VERT = 0.07
-
--- Amplitude lateral do bobbing
--- Controla o quanto a arma VAI PROS LADOS
--- D sensao de peso e passo
--- Geralmente menor que o vertical
--- Bom range: 0.03 ~ 0.06
 local BOB_SIDE = 0.05
-
--- Suavizao do bobbing (anti-tremida)
--- Controla o quo rpido o bobbing acompanha o alvo
--- ? baixo = responde rpido, pode tremer
--- ? alto = mais suave, mais pesado
--- Range saudvel: 8 ~ 14
 local BOB_SMOOTH = 10
 local bobTime = 0
 local currentBob = Vector3.zero
 
--- =========================
--- RECOIL CONFIG (SHOOT)
--- =========================
--- Quanto a arma recua ao atirar (valores > 0 empurram para trs)
-local RECOIL_BACK = 0.25
-
--- Velocidade de retorno do recoil para o normal
+local RECOIL_BACK = 0.3
 local RECOIL_RETURN = 8
 
 local recoilOffset = 0
 
--- partes a esconder
 local HIDE_NAMES = {
-	"RightHand","RightLowerArm","RightUpperArm",
-	"LeftHand","LeftLowerArm","LeftUpperArm",
-	"Right Arm","Left Arm"
+	"RightHand", "RightLowerArm", "RightUpperArm",
+	"LeftHand", "LeftLowerArm", "LeftUpperArm",
+	"Right Arm", "Left Arm"
 }
 
 local hiddenParts = {}
@@ -92,14 +56,11 @@ local function hideDefaultViewmodel()
 	local char = player.Character
 	if not char then return end
 
-	-- 1. Esconde os braos padro do personagem (Terceira pessoa)
 	for _, name in ipairs(HIDE_NAMES) do
 		local part = char:FindFirstChild(name)
 		if part then hidePart(part) end
 	end
 
-	-- 2. Esconde TODAS as partes visuais da Tool para voc
-	-- Isso limpa o Handle, o HandleO e qualquer Cube/Cylinder
 	for _, obj in ipairs(tool:GetDescendants()) do
 		if obj:IsA("BasePart") then
 			hidePart(obj)
@@ -140,7 +101,6 @@ local function removeViewmodel()
 		tracerConnection:Disconnect()
 		tracerConnection = nil
 	end
-	
 
 	if viewmodel then
 		viewmodel:Destroy()
@@ -150,7 +110,6 @@ local function removeViewmodel()
 	restoreDefaultViewmodel()
 end
 
--- ?? VELOCIDADE VEM DA MOVI (ATTRIBUTE)
 local function getHorizontalSpeed()
 	local char = player.Character
 	if not char then return 0 end
@@ -192,12 +151,14 @@ tool.Equipped:Connect(function()
 		)
 	end)
 
-	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, weaponId)
-		if weaponId ~= nil and weaponId ~= WEAPON_ID then return end
+	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, weaponId, pelletIndex)
+		if weaponId ~= WEAPON_ID then return end
 		if shooterUserId ~= player.UserId then return end
 		if not (viewmodel and viewmodel.PrimaryPart) then return end
 
-		recoilOffset = math.clamp(recoilOffset + RECOIL_BACK, 0, RECOIL_BACK * 2)
+		if pelletIndex == 1 then
+			recoilOffset = math.clamp(recoilOffset + RECOIL_BACK, 0, RECOIL_BACK * 2)
+		end
 	end)
 end)
 

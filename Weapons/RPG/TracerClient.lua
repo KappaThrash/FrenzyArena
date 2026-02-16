@@ -10,6 +10,7 @@ local tracerEvent = RS:WaitForChild("TracerVisual")
 local tool = script.Parent
 local viewmodelFolder = RS:WaitForChild("Viewmodel")
 local VIEWMODEL_NAME = "ViewmodelRPG"
+local WEAPON_ID = "rpg"
 local cachedAttachment
 local ROCKET_NAME = "Rocket"
 local PROJECTILE_SPEED = 220
@@ -326,7 +327,10 @@ tool.Unequipped:Connect(function()
 	cachedAttachment = nil
 end)
 
-tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, serverProjectile)
+tracerEvent.OnClientEvent:Connect(function(startPos, direction, shooterUserId, weaponId, serverProjectile)
+	if weaponId ~= WEAPON_ID then
+		return
+	end
 	if shooterUserId ~= player.UserId then
 		playShotSoundAt(startPos)
 		return
