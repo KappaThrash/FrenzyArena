@@ -15,7 +15,7 @@ local viewmodel
 local connection
 local tracerConnection
 
-local OFFSET = CFrame.new(0.9, -1, -1.4)
+local OFFSET = CFrame.new(0.9, -1, -1.4) * CFrame.Angles(0, math.rad(180), 0)
 
 local BOB_FREQ = 7
 local BOB_VERT = 0.07
@@ -80,6 +80,9 @@ end
 local function createViewmodel()
 	clearExistingViewmodels()
 	viewmodel = viewmodelTemplate:Clone()
+	if not viewmodel.PrimaryPart then
+		viewmodel.PrimaryPart = viewmodel:FindFirstChildWhichIsA("BasePart")
+	end
 	viewmodel.Parent = camera
 
 	for _, obj in ipairs(viewmodel:GetDescendants()) do
@@ -153,7 +156,6 @@ tool.Equipped:Connect(function()
 
 	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, weaponId, pelletIndex)
 		if weaponId ~= WEAPON_ID then return end
-	tracerConnection = tracerEvent.OnClientEvent:Connect(function(_, _, shooterUserId, pelletIndex)
 		if shooterUserId ~= player.UserId then return end
 		if not (viewmodel and viewmodel.PrimaryPart) then return end
 
